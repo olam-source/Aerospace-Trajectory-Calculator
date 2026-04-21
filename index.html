@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HAT-F | Aerospace Mission Control</title>
+    <style>
+        body { background: #0b0e14; color: #00ffcc; font-family: 'Courier New', Courier, monospace; margin: 0; overflow: hidden; }
+        #dashboard { display: flex; height: 100vh; }
+        #sidebar { width: 300px; background: #151921; border-right: 2px solid #00ffcc; padding: 20px; box-sizing: border-box; }
+        #display-area { flex-grow: 1; position: relative; }
+        canvas { width: 100%; height: 100%; }
+        .stat-box { margin-bottom: 20px; border: 1px solid #004433; padding: 10px; background: #0d1117; }
+        .label { font-size: 0.8rem; color: #888; }
+        .value { font-size: 1.2rem; font-weight: bold; }
+        h2 { border-bottom: 1px solid #00ffcc; padding-bottom: 5px; }
+        button { background: #00ffcc; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #00ccaa; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard">
+    <div id="sidebar">
+        <h2>HAT-F v6.0</h2>
+        <div class="stat-box">
+            <div class="label">MISSION TIME</div>
+            <div id="time" class="value">0.00s</div>
+        </div>
+        <div class="stat-box">
+            <div class="label">ALTITUDE (m)</div>
+            <div id="alt" class="value">0.00</div>
+        </div>
+        <div class="stat-box">
+            <div class="label">VELOCITY (m/s)</div>
+            <div id="vel" class="value">0.00</div>
+        </div>
+        <div class="stat-box">
+            <div class="label">CURRENT STAGE</div>
+            <div id="stage" class="value">PRE-LAUNCH</div>
+        </div>
+        <button onclick="startSimulation()">INITIATE LAUNCH</button>
+        <p style="font-size: 10px; margin-top: 20px; color: #555;">NUMERICAL INTEGRATION: EULER METHOD<br>ATMOSPHERE: ISA 1976 MODEL</p>
+    </div>
+    <div id="display-area">
+        <canvas id="flightCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('flightCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Physics Constants (HAT-F Logic)
+    const G = 9.80665;
+    const DT = 0.05; // Time step
+    let flightData = [];
+    let isRunning = false;
+
+    // Rocket State
+    let state = {
+        time: 0, x: 0, y: 0, vx: 15, vy: 100,
+        m1: 30000, m2: 10000, // fuel masses
+        dry1: 8000, dry2: 2000,
+        activeStage: 1
+    };
+
+    function resize() {
+        canvas.width = window.innerWidth - 300;
+        canvas.height = window.innerHeight;
+    }
+    window.onresize = resize;
+    resize();
+
+    function getAirDensity(h) {
+        if (h < 11000) return 1.225 * Math.pow((1 - 0.0065 * h / 288.15), 4.256);
+        return 0.3639 * Math.exp(-G * (h - 11000) / (287.05 * 216.65));
+    }
+
+    function startSimulation() {
+        if (isRunning) return;
+        isRunning = true;
+        flightData = [];
+        state = { time: 0, x: 0, y: 0, vx: 15, vy: 80, m1: 30000, m2: 10000, dry1: 8000, dry2: 2000, activeStage: 1 };
+        animate();
+    }
+
+    function animate() {
+        if (state.y < 0 && state.time > 0) { isRunning = false; return; }
+
+        // 1. Physics Step (HAT-F Numerical Integration)
+        let totalMass = state.dry2 + state.m2;
+        let thrust = 0;
+        let area = 2.0;
+
+        if (state.activeStage === 1) {
+            totalMass += state.dry1 + state.m1;
+            thrust = 650000;
+            area = 4.5;
+            state.m1 -= 500 * DT; // Burn rate
+            if (state.m1 <= 0) state.activeStage = 2;
+        } else if (state.activeStage === 2 && state.m2 > 0) {
+            thrust = 180000;
+            state.m2 -= 100 * DT;
+        }
+
+        let speed = Math.sqrt(state.vx**2 + state.vy**2);
+        let drag = 0.5 * getAirDensity(state.y) * speed**2 * 0.5 * area;
+        
+        let ax = (thrust * (state.vx/speed) - drag * (state.vx/speed)) / totalMass;
+        let ay = (thrust * (state.vy/speed) - drag * (state.vy/speed) - (G * totalMass)) / totalMass;
+
+        state.vx += ax * DT;
+        state.vy += ay * DT;
+        state.x += state.vx * DT;
+        state.y += state.vy * DT;
+        state.time += DT;
+
+        flightData.push({x: state.x, y: state.y});
+
+        // 2. Render Step
+        draw();
+        updateHUD();
+        
+        if (isRunning) requestAnimationFrame(animate);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const scale = 0.02; // Dynamic scaling factor
+        const offsetX = 50;
+        const offsetY = canvas.height - 50;
+
+        // Draw Ground
+        ctx.strokeStyle = '#333';
+        ctx.beginPath();
+        ctx.moveTo(0, offsetY); ctx.lineTo(canvas.width, offsetY);
+        ctx.stroke();
+
+        // Draw Trajectory
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        flightData.forEach((p, i) => {
+            let px = offsetX + p.x * scale;
+            let py = offsetY - p.y * scale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+
+        // Draw Rocket Icon
+        let rx = offsetX + state.x * scale;
+        let ry = offsetY - state.y * scale;
+        ctx.fillStyle = (state.activeStage === 1) ? "#ff3300" : "#00ffcc";
+        ctx.fillRect(rx - 4, ry - 4, 8, 8);
+        
+        // Exhaust Flame Effect
+        if (state.activeStage < 3) {
+            ctx.fillStyle = "orange";
+            ctx.beginPath();
+            ctx.arc(rx, ry + 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function updateHUD() {
+        document.getElementById('time').innerText = state.time.toFixed(2) + "s";
+        document.getElementById('alt').innerText = state.y.toFixed(2);
+        document.getElementById('vel').innerText = Math.sqrt(state.vx**2 + state.vy**2).toFixed(2);
+        document.getElementById('stage').innerText = state.activeStage === 1 ? "STAGE 1 (BOOSTER)" : (state.m2 > 0 ? "STAGE 2 (ORBITAL)" : "COASTING");
+    }
+</script>
+</body>
+</html>
