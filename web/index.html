@@ -3,177 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aerospace Trajectory Calculator</title>
+    <title>Flight Trajectory Simulator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Standard Corporate/Academic UI Variables */
-        :root { 
-            --bg-color: #f4f6f8; 
-            --panel-bg: #ffffff; 
-            --text-main: #333333;
-            --text-muted: #666666;
-            --primary-blue: #0056b3;
-            --border-color: #e2e8f0;
-        }
-        
-        body, html { 
-            background: var(--bg-color); 
-            color: var(--text-main); 
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            margin: 0; padding: 0; height: 100vh; width: 100vw;
-            overflow: hidden; 
-        }
-        
-        #dashboard { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
-        #sidebar { 
-            width: 340px; background: var(--panel-bg); 
-            border-right: 1px solid var(--border-color); 
-            padding: 24px; box-sizing: border-box;
-            display: flex; flex-direction: column;
-            overflow-y: auto; z-index: 10;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+        /* Modern, clean CSS variables */
+        :root {
+            --bg-body: #f1f5f9;
+            --bg-surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --sim-bg: #0f172a; /* Dark slate for the simulation canvas */
         }
 
-        #main-view { 
-            flex-grow: 1; display: flex; flex-direction: column; 
-            height: 100vh; overflow: hidden; 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        
-        .viewport-container { 
-            flex: 1.5; position: relative; border-bottom: 1px solid var(--border-color); 
-            min-height: 200px; background: #e6f3ff; transition: background 0.5s ease;
-        }
-        
-        #flightCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        }
-        
-        .chart-section { 
-            flex: 1; position: relative; padding: 20px; 
-            background: var(--panel-bg); min-height: 0; box-sizing: border-box;
-        }
-        
-        .chart-wrapper { position: relative; height: 100%; width: 100%; }
 
-        .sidebar-header { margin: 0 0 20px 0; font-size: 1.2rem; font-weight: 600; color: var(--text-main); }
-        
-        .input-group { 
-            margin-bottom: 16px; border: 1px solid var(--border-color); 
-            padding: 12px; background: #fafbfc; border-radius: 6px; 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
         }
-        
-        .input-group h3 { 
-            font-size: 0.8rem; font-weight: 600; text-transform: uppercase; 
-            margin: 0 0 12px 0; color: var(--text-muted); 
-            border-bottom: 1px solid var(--border-color); padding-bottom: 6px;
-        }
-        
-        .control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .control-row label { font-size: 0.85rem; color: var(--text-main); }
-        .control-row input { 
-            background: #fff; border: 1px solid #cbd5e1; color: var(--text-main); 
-            width: 80px; padding: 4px 8px; font-size: 0.85rem; text-align: right;
-            border-radius: 4px;
-        }
-        .control-row input:focus { outline: none; border-color: var(--primary-blue); }
 
-        .btn-primary { 
-            background: var(--primary-blue); color: #fff; border: none; 
-            padding: 10px; font-weight: 500; font-size: 0.95rem; cursor: pointer; 
-            margin-top: 15px; border-radius: 6px; transition: background 0.2s;
+        /* Sidebar Styling */
+        aside {
+            width: 380px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.02);
+            z-index: 10;
         }
-        .btn-primary:hover { background: #004494; }
-        
-        .btn-secondary { 
-            background: #f1f5f9; border: 1px solid #cbd5e1; color: var(--text-main); 
-            padding: 8px; font-size: 0.85rem; cursor: pointer; margin-top: 8px; 
-            border-radius: 6px; transition: background 0.2s;
+
+        .sidebar-header {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid var(--border);
         }
-        .btn-secondary:hover { background: #e2e8f0; }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .sidebar-content {
+            padding: 24px;
+            flex-grow: 1;
+        }
+
+        /* Form Controls */
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .input-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 0.875rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        input[type="number"] {
+            width: 100px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: var(--text-main);
+            text-align: right;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Buttons */
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-body);
+        }
+
+        /* Telemetry Readout */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-box {
+            background: var(--bg-body);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        /* Main Content Area */
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-body);
+            padding: 24px;
+            gap: 24px;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            flex: 1.5;
+            background: var(--sim-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas#flightCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-container {
+            flex: 1;
+            background: var(--bg-surface);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            position: relative;
+            min-height: 0; /* Prevents flexbox expansion bugs */
+        }
         
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        .stat-card { border: 1px solid var(--border-color); padding: 10px; background: #fff; border-radius: 6px; }
-        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
-        .stat-value { font-size: 1rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chart-wrapper {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
     </style>
 </head>
 <body>
 
-<div id="dashboard">
-    <div id="sidebar">
-        <h2 class="sidebar-header">Flight Configuration</h2>
-        
-        <div class="input-group">
-            <h3>Environment</h3>
-            <div class="control-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="88"></div>
-            <div class="control-row"><label>Initial Velocity (m/s)</label><input type="number" id="init_v" value="100"></div>
-            <div class="control-row"><label>Drag Coefficient</label><input type="number" id="drag_cd" value="0.40" step="0.01"></div>
-        </div>
-
-        <div class="input-group">
-            <h3>Stage 1 (Booster)</h3>
-            <div class="control-row"><label>Thrust (N)</label><input type="number" id="s1_thrust" value="950000"></div>
-            <div class="control-row"><label>Fuel Mass (kg)</label><input type="number" id="s1_fuel" value="40000"></div>
-            <div class="control-row"><label>Dry Mass (kg)</label><input type="number" id="s1_dry" value="10000"></div>
-        </div>
-
-        <div class="input-group">
-            <h3>Stage 2 (Orbiter)</h3>
-            <div class="control-row"><label>Thrust (N)</label><input type="number" id="s2_thrust" value="210000"></div>
-            <div class="control-row"><label>Fuel Mass (kg)</label><input type="number" id="s2_fuel" value="12000"></div>
-            <div class="control-row"><label>Dry Mass (kg)</label><input type="number" id="s2_dry" value="2500"></div>
-        </div>
-
-        <div class="stat-card" style="margin-top: 10px;">
-            <div class="stat-label">System Status</div>
-            <div id="status" class="stat-value" style="color:#64748b;">Ready</div>
+    <aside>
+        <div class="sidebar-header">
+            <h1>Flight Parameters</h1>
         </div>
         
-        <div class="stat-grid">
-            <div class="stat-card"><div class="stat-label">Altitude (m)</div><div id="alt" class="stat-value">0</div></div>
-            <div class="stat-card"><div class="stat-label">Velocity (m/s)</div><div id="vel" class="stat-value">0</div></div>
-        </div>
-        
-        <button class="btn-primary" onclick="startSimulation()">Run Simulation</button>
-        <button class="btn-secondary" onclick="exportData()">Export Data (.txt)</button>
-    </div>
+        <div class="sidebar-content">
+            <div class="card">
+                <div class="card-title">Environment</div>
+                <div class="input-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="88"></div>
+                <div class="input-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="100"></div>
+                <div class="input-row"><label>Drag Coeff (Cd)</label><input type="number" id="drag_cd" value="0.40" step="0.01"></div>
+            </div>
 
-    <div id="main-view">
-        <div class="viewport-container" id="sky">
+            <div class="card">
+                <div class="card-title">Stage 1 (Booster)</div>
+                <div class="input-row"><label>Thrust (N)</label><input type="number" id="s1_thrust" value="950000"></div>
+                <div class="input-row"><label>Fuel Mass (kg)</label><input type="number" id="s1_fuel" value="40000"></div>
+                <div class="input-row"><label>Dry Mass (kg)</label><input type="number" id="s1_dry" value="10000"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Stage 2 (Orbiter)</div>
+                <div class="input-row"><label>Thrust (N)</label><input type="number" id="s2_thrust" value="210000"></div>
+                <div class="input-row"><label>Fuel Mass (kg)</label><input type="number" id="s2_fuel" value="12000"></div>
+                <div class="input-row"><label>Dry Mass (kg)</label><input type="number" id="s2_dry" value="2500"></div>
+            </div>
+
+            <div class="actions">
+                <button class="btn-primary" onclick="runSimulation()">Run Sim</button>
+                <button class="btn-secondary" onclick="exportConfig()">Export</button>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-title">
+                    Telemetry
+                    <span id="status_badge" class="status-badge">IDLE</span>
+                </div>
+                <div class="telemetry-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Altitude (m)</div>
+                        <div class="stat-value" id="out_alt">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Velocity (m/s)</div>
+                        <div class="stat-value" id="out_vel">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <div class="canvas-container">
             <canvas id="flightCanvas"></canvas>
         </div>
-        <div class="chart-section">
+        
+        <div class="chart-container">
             <div class="chart-wrapper">
                 <canvas id="telemetryChart"></canvas>
             </div>
         </div>
-    </div>
-</div>
+    </main>
 
 <script>
     const canvas = document.getElementById('flightCanvas');
     const ctx = canvas.getContext('2d');
-    const telChartCtx = document.getElementById('telemetryChart').getContext('2d');
-    const sky = document.getElementById('sky');
+    const chartCtx = document.getElementById('telemetryChart').getContext('2d');
 
     let isRunning = false;
-    let path = [];
+    let pathData = [];
     let config = {};
 
     // Standard styling for Chart.js
-    const telChart = new Chart(telChartCtx, {
+    const telChart = new Chart(chartCtx, {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Velocity (m/s)', data: [], borderColor: '#0056b3', backgroundColor: 'rgba(0, 86, 179, 0.1)', borderWidth: 2, fill: true, pointRadius: 0 }] },
+        data: { 
+            labels: [], 
+            datasets: [{ 
+                label: 'Velocity (m/s)', 
+                data: [], 
+                borderColor: '#2563eb', 
+                backgroundColor: 'rgba(37, 99, 235, 0.05)', 
+                borderWidth: 2, 
+                fill: true, 
+                pointRadius: 0,
+                tension: 0.1 
+            }] 
+        },
         options: { 
             responsive: true, 
             maintainAspectRatio: false, 
             animation: false, 
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
             scales: { 
-                x: { display: false }, 
-                y: { grid: { color: '#e2e8f0' } } 
+                x: { 
+                    display: false 
+                }, 
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                    border: { display: false }
+                } 
             }, 
-            plugins: { legend: { display: false } } 
+            plugins: { 
+                legend: { display: false },
+                tooltip: { enabled: true }
+            } 
         }
     });
 
@@ -185,34 +366,61 @@
     resizeCanvas();
 
     function formatNumber(num) {
-        if (num > 9999999) return num.toExponential(2);
+        if (num > 999999) return num.toExponential(2);
         return Math.floor(num).toLocaleString();
     }
 
-    function startSimulation() {
+    function setStatus(text, type) {
+        const badge = document.getElementById('status_badge');
+        badge.innerText = text;
+        
+        // Reset styles
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+
+        if (type === 'running') {
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#166534';
+        } else if (type === 'error' || type === 'impact') {
+            badge.style.background = '#fee2e2';
+            badge.style.color = '#991b1b';
+        } else if (type === 'success') {
+            badge.style.background = '#dbeafe';
+            badge.style.color = '#1e40af';
+        }
+    }
+
+    function runSimulation() {
         if(isRunning) return;
         
         resizeCanvas();
 
-        const angle = parseFloat(document.getElementById('init_angle').value) * (Math.PI / 180);
+        const angleRad = parseFloat(document.getElementById('init_angle').value) * (Math.PI / 180);
         const v0 = parseFloat(document.getElementById('init_v').value);
         
         config = {
-            s1: { thrust: parseFloat(document.getElementById('s1_thrust').value), fuel: parseFloat(document.getElementById('s1_fuel').value), dry: parseFloat(document.getElementById('s1_dry').value), flow: 550 },
-            s2: { thrust: parseFloat(document.getElementById('s2_thrust').value), fuel: parseFloat(document.getElementById('s2_fuel').value), dry: parseFloat(document.getElementById('s2_dry').value), flow: 110 },
+            s1: { 
+                thrust: parseFloat(document.getElementById('s1_thrust').value), 
+                fuel: parseFloat(document.getElementById('s1_fuel').value), 
+                dry: parseFloat(document.getElementById('s1_dry').value), 
+                flow: 550 
+            },
+            s2: { 
+                thrust: parseFloat(document.getElementById('s2_thrust').value), 
+                fuel: parseFloat(document.getElementById('s2_fuel').value), 
+                dry: parseFloat(document.getElementById('s2_dry').value), 
+                flow: 110 
+            },
             cd: parseFloat(document.getElementById('drag_cd').value),
-            state: { t:0, x:0, y:0, vx: v0 * Math.cos(angle), vy: v0 * Math.sin(angle), stage: 1 }
+            state: { t: 0, x: 0, y: 0, vx: v0 * Math.cos(angleRad), vy: v0 * Math.sin(angleRad), stage: 1 }
         };
 
         isRunning = true;
-        path = [];
+        pathData = [];
         telChart.data.labels = [];
         telChart.data.datasets[0].data = [];
         
-        const statusEl = document.getElementById('status');
-        statusEl.innerText = "Running";
-        statusEl.style.color = "#16a34a"; // Standard green
-        
+        setStatus('COMPUTING', 'running');
         animate();
     }
 
@@ -220,88 +428,127 @@
         if (!isRunning) return;
 
         const dt = 0.15;
-        const EarthR = 6371000;
+        const R_EARTH = 6371000;
         const GM = 3.986e14;
         const s = config.state;
         
-        let currentMass = config.s2.dry + config.s2.fuel + (s.stage === 1 ? config.s1.dry + config.s1.fuel : 0);
+        // Mass calculation
+        let currentMass = config.s2.dry + config.s2.fuel;
+        if (s.stage === 1) currentMass += (config.s1.dry + config.s1.fuel);
+
         let thrust = s.stage === 1 ? config.s1.thrust : (config.s2.fuel > 0 ? config.s2.thrust : 0);
         let speed = Math.sqrt(s.vx**2 + s.vy**2);
         
-        let gravity = GM / Math.pow(EarthR + s.y, 2);
+        // Physics
+        let gravity = GM / Math.pow(R_EARTH + s.y, 2);
         let rho = s.y > 100000 ? 0 : 1.225 * Math.exp(-s.y / 8500); 
         let drag = 0.5 * rho * speed**2 * config.cd * (s.stage === 1 ? 4.5 : 2.0);
 
         let ax = (thrust * (s.vx/speed) - drag * (s.vx/speed)) / currentMass;
         let ay = ((thrust * (s.vy/speed) - drag * (s.vy/speed)) / currentMass) - gravity;
 
-        if (isNaN(ax) || isNaN(ay)) { isRunning = false; return; }
+        if (isNaN(ax) || isNaN(ay)) { 
+            isRunning = false; 
+            setStatus('MATH ERROR', 'error');
+            return; 
+        }
 
-        s.vx += ax * dt; s.vy += ay * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.t += dt;
+        // Integration
+        s.vx += ax * dt; 
+        s.vy += ay * dt; 
+        s.x += s.vx * dt; 
+        s.y += s.vy * dt; 
+        s.t += dt;
 
-        if(s.stage === 1) { config.s1.fuel -= config.s1.flow * dt; if(config.s1.fuel <= 0) s.stage = 2; }
-        else if(config.s2.fuel > 0) config.s2.fuel -= config.s2.flow * dt;
+        // Stage Logic
+        if (s.stage === 1) { 
+            config.s1.fuel -= config.s1.flow * dt; 
+            if (config.s1.fuel <= 0) s.stage = 2; 
+        } else if (config.s2.fuel > 0) {
+            config.s2.fuel -= config.s2.flow * dt;
+        }
 
-        document.getElementById('alt').innerText = formatNumber(s.y);
-        document.getElementById('vel').innerText = formatNumber(speed);
+        // DOM Updates
+        if (Math.round(s.t * 10) % 5 === 0) {
+            document.getElementById('out_alt').innerText = formatNumber(s.y);
+            document.getElementById('out_vel').innerText = formatNumber(speed);
+        }
 
-        // Standard daytime sky transition to space
-        let skyAlt = Math.min(Math.max(s.y / 80000, 0), 1);
-        sky.style.background = `linear-gradient(to top, rgba(230, 243, 255, ${1-skyAlt}) 0%, rgba(10, 20, 40, ${skyAlt}) 100%)`;
-
+        // Draw Canvas (Independent Axis Scaling to ensure path is visible)
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        path.push({x: s.x, y: s.y});
+        pathData.push({x: s.x, y: s.y});
         
-        let maxX = Math.max(...path.map(p => Math.abs(p.x)), 10); 
-        let maxY = Math.max(...path.map(p => p.y), 10); 
+        let maxX = Math.max(...pathData.map(p => Math.abs(p.x)), 10); 
+        let maxY = Math.max(...pathData.map(p => p.y), 10); 
         const padX = 40;
         const padY = 40;
         
         const scaleX = (canvas.width - padX * 2) / maxX;
         const scaleY = (canvas.height - padY * 2) / maxY;
 
-        ctx.strokeStyle = '#0056b3'; // Standard blue path
-        ctx.lineWidth = 2; 
+        ctx.strokeStyle = '#38bdf8'; // Sky blue for visibility against dark slate
+        ctx.lineWidth = 2.5; 
+        ctx.lineJoin = 'round';
         ctx.beginPath();
-        path.forEach((p, i) => {
+        
+        pathData.forEach((p, i) => {
             const dx = padX + (p.x * scaleX);
             const dy = (canvas.height - padY) - (p.y * scaleY);
-            if(i === 0) ctx.moveTo(dx, dy); else ctx.lineTo(dx, dy);
+            if (i === 0) ctx.moveTo(dx, dy); 
+            else ctx.lineTo(dx, dy);
         });
         ctx.stroke();
 
+        // Update Chart
         if(Math.round(s.t * 10) % 10 === 0) {
             telChart.data.labels.push(s.t.toFixed(0));
             telChart.data.datasets[0].data.push(speed);
             telChart.update('none');
         }
 
-        let escapeV = Math.sqrt(2 * GM / (EarthR + s.y));
-        const statusEl = document.getElementById('status');
+        // Termination Conditions
+        let escapeV = Math.sqrt(2 * GM / (R_EARTH + s.y));
 
         if (s.y < -10 && s.t > 1) { 
             isRunning = false; 
-            statusEl.innerText = "Complete - Impact"; 
-            statusEl.style.color = "#475569";
+            setStatus('IMPACT', 'impact');
         } else if (speed >= 299792458) { 
             isRunning = false; 
-            statusEl.innerText = "Error: Physics Limit"; 
-            statusEl.style.color = "#dc2626";
+            setStatus('SPEED LIMIT', 'error');
         } else if (speed > escapeV && s.t > 50) {
             isRunning = false; 
-            statusEl.innerText = "Escaped Gravity Well"; 
-            statusEl.style.color = "#0284c7";
+            setStatus('ORBIT ACHIEVED', 'success');
         }
 
-        if(isRunning) requestAnimationFrame(animate);
+        if (isRunning) requestAnimationFrame(animate);
     }
 
-    function exportData() {
-        const data = `Aerospace Trajectory Calculator - Export\n---------------------------\nStage 1 Thrust: ${document.getElementById('s1_thrust').value} N\nStage 2 Thrust: ${document.getElementById('s2_thrust').value} N\nDrag Coefficient: ${document.getElementById('drag_cd').value}\nInitial Velocity: ${document.getElementById('init_v').value} m/s\nLaunch Angle: ${document.getElementById('init_angle').value}°\n---------------------------\nTimestamp: ${new Date().toISOString()}`;
-        const blob = new Blob([data], { type: 'text/plain' });
+    function exportConfig() {
+        const payload = {
+            timestamp: new Date().toISOString(),
+            environment: {
+                angle: parseFloat(document.getElementById('init_angle').value),
+                velocity: parseFloat(document.getElementById('init_v').value),
+                dragCd: parseFloat(document.getElementById('drag_cd').value)
+            },
+            stage1: {
+                thrust: parseFloat(document.getElementById('s1_thrust').value),
+                fuel: parseFloat(document.getElementById('s1_fuel').value),
+                dry: parseFloat(document.getElementById('s1_dry').value)
+            },
+            stage2: {
+                thrust: parseFloat(document.getElementById('s2_thrust').value),
+                fuel: parseFloat(document.getElementById('s2_fuel').value),
+                dry: parseFloat(document.getElementById('s2_dry').value)
+            }
+        };
+        
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'trajectory_config.txt'; a.click();
+        a.href = url; 
+        a.download = `trajectory_config_${Date.now()}.json`; 
+        a.click();
     }
 </script>
 </body>
