@@ -1,67 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HAT-F MISSION CONTROL</title>
+    <title>HAT-F | Mission Control Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #0b0e14; color: #00ffcc; font-family: monospace; display: flex; height: 100vh; margin: 0; }
-        #side { width: 300px; padding: 20px; border-right: 2px solid #00ffcc; background: #151921; }
-        #main { flex-grow: 1; display: flex; flex-direction: column; }
-        .view { flex: 2; position: relative; border-bottom: 1px solid #333; }
+        body { background: #0b0e14; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        #sidebar { width: 320px; background: #151921; border-right: 2px solid #00ffcc; padding: 25px; box-sizing: border-box; }
+        #display { flex-grow: 1; display: flex; flex-direction: column; }
+        .stat-box { border: 1px solid #004433; padding: 15px; margin-bottom: 15px; background: rgba(0,255,204,0.02); }
+        .label { color: #888; font-size: 0.8rem; text-transform: uppercase; }
+        .value { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .canvas-container { flex: 2; position: relative; border-bottom: 1px solid #333; }
+        .graph-container { flex: 1; padding: 10px; background: #080a0f; }
+        button { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #fff; box-shadow: 0 0 15px #00ffcc; }
         canvas { width: 100%; height: 100%; }
-        .stats { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; }
-        .card { border: 1px solid #004433; padding: 10px; background: rgba(0,255,204,0.05); }
-        button { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="side">
-        <h2>HAT-F v6.0</h2>
-        <div class="card">STATUS: <span id="stat">STANDBY</span></div><br>
-        <div class="card">ALTITUDE: <span id="alt">0</span>m</div><br>
-        <div class="card">VELOCITY: <span id="vel">0</span>m/s</div><br>
+    <div id="sidebar">
+        <h1 style="font-size: 1.2rem; border-left: 4px solid #0fc; padding-left: 10px;">HAT-F v6.0</h1>
+        <div class="stat-box"><div class="label">Status</div><div id="status" class="value" style="color:yellow">STANDBY</div></div>
+        <div class="stat-box"><div class="label">Altitude (m)</div><div id="alt" class="value">0</div></div>
+        <div class="stat-box"><div class="label">Velocity (m/s)</div><div id="vel" class="value">0</div></div>
         <button onclick="launch()">INITIALIZE LAUNCH</button>
+        <p style="font-size: 10px; color: #444; margin-top: 40px;">ENGINE: HAT-F DUAL-STAGE CORE<br>ISA 1976 ATMOSPHERE MODEL</p>
     </div>
-    <div id="main">
-        <div class="view"><canvas id="flightCanvas"></canvas></div>
-        <div class="stats"><canvas id="velChart"></canvas></div>
+    <div id="display">
+        <div class="canvas-container"><canvas id="flightCanvas"></canvas></div>
+        <div class="graph-container"><canvas id="telemetryChart"></canvas></div>
     </div>
 
     <script>
-        const ctx = document.getElementById('flightCanvas').getContext('2d');
-        const vCtx = document.getElementById('velChart').getContext('2d');
-        let data = [], isRun = false, state = {t:0, x:0, y:0, vx:15, vy:100, m1:30000, m2:10000};
+        const canvas = document.getElementById('flightCanvas');
+        const ctx = canvas.getContext('2d');
+        const telChart = new Chart(document.getElementById('telemetryChart'), {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Velocity', data: [], borderColor: '#0fc', pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#222' } } }, plugins: { legend: { display: false } } }
+        });
 
-        const chart = new Chart(vCtx, { type: 'line', data: { labels: [], datasets: [{ label: 'Vel', data: [], borderColor: '#0cf' }] }, options: { maintainAspectRatio: false }});
+        let isRunning = false;
+        let state = { t:0, x:0, y:0, vx:10, vy:110, m1:32000, m2:12000, stage:1 };
+        let flightPath = [];
 
-        function launch() { if(isRun) return; isRun = true; state = {t:0, x:0, y:0, vx:15, vy:100, m1:30000, m2:10000}; data = []; loop(); }
+        function launch() {
+            if(isRunning) return;
+            isRunning = true;
+            state = { t:0, x:0, y:0, vx:10, vy:110, m1:32000, m2:12000, stage:1 };
+            flightPath = [];
+            telChart.data.labels = [];
+            telChart.data.datasets[0].data = [];
+            document.getElementById('status').innerText = "FLIGHT ACTIVE";
+            animate();
+        }
 
-        function loop() {
-            if (state.y < 0 && state.t > 1) { isRun = false; return; }
-            let m = 12000 + (state.m1 > 0 ? 38000 + state.m1 : state.m2);
-            let thrust = state.m1 > 0 ? 650000 : (state.m2 > 0 ? 180000 : 0);
-            let rho = 1.225 * Math.exp(-state.y / 8000);
+        function animate() {
+            if (state.y < 0 && state.t > 1) { 
+                isRunning = false; 
+                document.getElementById('status').innerText = "IMPACT";
+                return; 
+            }
+
+            // Physics Loop (dt = 0.1 for browser performance)
+            const dt = 0.1;
+            let m = 14500 + (state.stage === 1 ? state.m1 : state.m2);
+            let thrust = state.stage === 1 ? 700000 : (state.m2 > 0 ? 200000 : 0);
             let speed = Math.sqrt(state.vx**2 + state.vy**2);
-            let drag = 0.5 * rho * speed**2 * 0.45 * (state.m1 > 0 ? 4.5 : 2.0);
+            let rho = 1.225 * Math.exp(-state.y / 8500); 
+            let drag = 0.5 * rho * speed**2 * 0.45 * (state.stage === 1 ? 4.5 : 2.2);
 
-            let ax = (thrust*(state.vx/speed) - drag*(state.vx/speed))/m;
-            let ay = (thrust*(state.vy/speed) - drag*(state.vy/speed) - 9.8*m)/m;
+            let ax = (thrust * (state.vx/speed) - drag * (state.vx/speed)) / m;
+            let ay = (thrust * (state.vy/speed) - drag * (state.vy/speed) - (9.8 * m)) / m;
 
-            state.vx += ax*0.1; state.vy += ay*0.1; state.x += state.vx*0.1; state.y += state.vy*0.1; state.t += 0.1;
-            if(state.m1 > 0) state.m1 -= 50; else if(state.m2 > 0) state.m2 -= 10;
+            state.vx += ax * dt; state.vy += ay * dt; state.x += state.vx * dt; state.y += state.vy * dt; state.t += dt;
+            if(state.stage === 1) { state.m1 -= 500*dt; if(state.m1 <= 0) state.stage = 2; }
+            else if(state.m2 > 0) state.m2 -= 100*dt;
 
+            // UI Update
             document.getElementById('alt').innerText = Math.round(state.y);
             document.getElementById('vel').innerText = Math.round(speed);
-            
-            ctx.clearRect(0,0,800,600);
-            ctx.strokeStyle = '#0fc'; ctx.beginPath();
-            data.push({x: state.x, y: state.y});
-            data.forEach((p, i) => { if(i==0) ctx.moveTo(50+p.x*0.01, 550-p.y*0.01); else ctx.lineTo(50+p.x*0.01, 550-p.y*0.01); });
+
+            // Render Trajectory
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+            flightPath.push({x: state.x, y: state.y});
+            ctx.beginPath();
+            flightPath.forEach((p, i) => {
+                let px = 50 + p.x * 0.01;
+                let py = (canvas.height - 50) - p.y * 0.01;
+                if(i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            });
             ctx.stroke();
 
-            if(Math.round(state.t*10)%10==0) { chart.data.labels.push(state.t.toFixed(0)); chart.data.datasets[0].data.push(speed); chart.update(); }
-            requestAnimationFrame(loop);
+            // Update Chart
+            if(Math.round(state.t * 10) % 10 === 0) {
+                telChart.data.labels.push(state.t.toFixed(0));
+                telChart.data.datasets[0].data.push(speed);
+                telChart.update('none');
+            }
+
+            if(isRunning) requestAnimationFrame(animate);
         }
+
+        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+        window.onresize = resize; resize();
     </script>
 </body>
 </html>
