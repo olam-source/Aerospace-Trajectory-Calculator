@@ -1,110 +1,177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HAT-F | Mission Control Dashboard</title>
+    <meta charset="UTF-8">
+    <title>HAT-F | Mission Control (Debugged)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #0b0e14; color: #00ffcc; font-family: 'Courier New', monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 320px; background: #151921; border-right: 2px solid #00ffcc; padding: 25px; box-sizing: border-box; }
-        #display { flex-grow: 1; display: flex; flex-direction: column; }
-        .stat-box { border: 1px solid #004433; padding: 15px; margin-bottom: 15px; background: rgba(0,255,204,0.02); }
-        .label { color: #888; font-size: 0.8rem; text-transform: uppercase; }
-        .value { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
-        .canvas-container { flex: 2; position: relative; border-bottom: 1px solid #333; }
-        .graph-container { flex: 1; padding: 10px; background: #080a0f; }
-        button { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #fff; box-shadow: 0 0 15px #00ffcc; }
-        canvas { width: 100%; height: 100%; }
+        :root { --neon: #00ffcc; --bg: #0b0e14; --panel: #151921; }
+        
+        /* Locking the viewport so it never scrolls */
+        body, html { 
+            background: var(--bg); color: var(--neon); 
+            font-family: 'Courier New', monospace; 
+            margin: 0; padding: 0; height: 100vh; width: 100vw;
+            overflow: hidden; 
+        }
+
+        #dashboard { display: flex; height: 100vh; width: 100vw; }
+        
+        #sidebar { 
+            width: 320px; background: var(--panel); 
+            border-right: 2px solid var(--neon); 
+            padding: 20px; box-sizing: border-box;
+            display: flex; flex-direction: column;
+        }
+
+        #main-view { 
+            flex-grow: 1; display: flex; flex-direction: column; 
+            height: 100vh; overflow: hidden; 
+        }
+
+        /* Essential Fix: position: relative and min-height: 0 prevents the infinite growth loop */
+        .viewport-container { 
+            flex: 2; position: relative; 
+            border-bottom: 1px solid #333; 
+            min-height: 0; 
+        }
+
+        .chart-section { 
+            flex: 1; position: relative; 
+            padding: 15px; background: #080a0f; 
+            min-height: 0; 
+        }
+
+        .stat-card { border: 1px solid #004433; padding: 12px; margin-bottom: 10px; background: rgba(0,255,204,0.03); }
+        .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .value { font-size: 1.3rem; font-weight: bold; }
+
+        canvas { display: block; width: 100% !important; height: 100% !important; }
+
+        button { 
+            background: var(--neon); color: #000; border: none; 
+            padding: 15px; cursor: pointer; font-weight: bold; 
+            margin-top: auto; transition: 0.2s;
+        }
+        button:hover { background: #fff; box-shadow: 0 0 15px var(--neon); }
     </style>
 </head>
 <body>
+
+<div id="dashboard">
     <div id="sidebar">
-        <h1 style="font-size: 1.2rem; border-left: 4px solid #0fc; padding-left: 10px;">HAT-F v6.0</h1>
-        <div class="stat-box"><div class="label">Status</div><div id="status" class="value" style="color:yellow">STANDBY</div></div>
-        <div class="stat-box"><div class="label">Altitude (m)</div><div id="alt" class="value">0</div></div>
-        <div class="stat-box"><div class="label">Velocity (m/s)</div><div id="vel" class="value">0</div></div>
-        <button onclick="launch()">INITIALIZE LAUNCH</button>
-        <p style="font-size: 10px; color: #444; margin-top: 40px;">ENGINE: HAT-F DUAL-STAGE CORE<br>ISA 1976 ATMOSPHERE MODEL</p>
-    </div>
-    <div id="display">
-        <div class="canvas-container"><canvas id="flightCanvas"></canvas></div>
-        <div class="graph-container"><canvas id="telemetryChart"></canvas></div>
+        <h2 style="margin-top:0;">HAT-F v6.0</h2>
+        <div class="stat-card"><div class="label">Status</div><div id="status" class="value" style="color:yellow;">READY</div></div>
+        <div class="stat-card"><div class="label">Altitude</div><div id="alt" class="value">0</div></div>
+        <div class="stat-card"><div class="label">Velocity</div><div id="vel" class="value">0</div></div>
+        <button onclick="ignite()">ENGAGE LAUNCH</button>
     </div>
 
-    <script>
-        const canvas = document.getElementById('flightCanvas');
-        const ctx = canvas.getContext('2d');
-        const telChart = new Chart(document.getElementById('telemetryChart'), {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'Velocity', data: [], borderColor: '#0fc', pointRadius: 0 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#222' } } }, plugins: { legend: { display: false } } }
+    <div id="main-view">
+        <div class="viewport-container">
+            <canvas id="flightCanvas"></canvas>
+        </div>
+        <div class="chart-section">
+            <canvas id="telemetryChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('flightCanvas');
+    const ctx = canvas.getContext('2d');
+    const telChartCtx = document.getElementById('telemetryChart').getContext('2d');
+
+    let isRunning = false;
+    let state = { t:0, x:0, y:0, vx:12, vy:95, m1:30000, m2:10000, stage:1 };
+    let path = [];
+
+    // Chart.js Configuration
+    const telChart = new Chart(telChartCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Velocity (m/s)', data: [], borderColor: '#00ffcc', borderWidth: 2, pointRadius: 0, fill: false }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Critically important for stationary behavior
+            animation: false, // Performance boost for live tracking
+            scales: {
+                x: { display: true, grid: { color: '#111' }, ticks: { display: false } },
+                y: { grid: { color: '#222' }, ticks: { color: '#888' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    function ignite() {
+        if(isRunning) return;
+        isRunning = true;
+        state = { t:0, x:0, y:0, vx:12, vy:95, m1:30000, m2:10000, stage:1 };
+        path = [];
+        telChart.data.labels = [];
+        telChart.data.datasets[0].data = [];
+        document.getElementById('status').innerText = "IN FLIGHT";
+        animate();
+    }
+
+    function animate() {
+        if (state.y < 0 && state.t > 1) {
+            isRunning = false;
+            document.getElementById('status').innerText = "IMPACT DETECTED";
+            return;
+        }
+
+        // --- Optimized Physics Module ---
+        const dt = 0.1;
+        const totalMass = 12000 + (state.stage === 1 ? 28000 + state.m1 : state.m2);
+        const thrust = state.stage === 1 ? 680000 : (state.m2 > 0 ? 190000 : 0);
+        const speed = Math.sqrt(state.vx**2 + state.vy**2);
+        const rho = 1.225 * Math.exp(-state.y / 8500); 
+        const drag = 0.5 * rho * speed**2 * 0.4 * (state.stage === 1 ? 4.5 : 2.0);
+
+        const ax = (thrust * (state.vx/speed) - drag * (state.vx/speed)) / totalMass;
+        const ay = (thrust * (state.vy/speed) - drag * (state.vy/speed) - (9.8 * totalMass)) / totalMass;
+
+        state.vx += ax * dt; state.vy += ay * dt; state.x += state.vx * dt; state.y += state.vy * dt; state.t += dt;
+        
+        if(state.stage === 1) { state.m1 -= 450 * dt; if(state.m1 <= 0) state.stage = 2; }
+        else if(state.m2 > 0) state.m2 -= 90 * dt;
+
+        // --- UI Updates ---
+        document.getElementById('alt').innerText = Math.floor(state.y) + " m";
+        document.getElementById('vel').innerText = Math.floor(speed) + " m/s";
+
+        // --- Stationary Drawing ---
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 2;
+        path.push({x: state.x, y: state.y});
+        
+        ctx.beginPath();
+        const scale = 0.015; // Adjustment to keep flight in view
+        path.forEach((p, i) => {
+            const drawX = 50 + (p.x * scale);
+            const drawY = (canvas.height - 50) - (p.y * scale);
+            if(i === 0) ctx.moveTo(drawX, drawY); else ctx.lineTo(drawX, drawY);
         });
+        ctx.stroke();
 
-        let isRunning = false;
-        let state = { t:0, x:0, y:0, vx:10, vy:110, m1:32000, m2:12000, stage:1 };
-        let flightPath = [];
-
-        function launch() {
-            if(isRunning) return;
-            isRunning = true;
-            state = { t:0, x:0, y:0, vx:10, vy:110, m1:32000, m2:12000, stage:1 };
-            flightPath = [];
-            telChart.data.labels = [];
-            telChart.data.datasets[0].data = [];
-            document.getElementById('status').innerText = "FLIGHT ACTIVE";
-            animate();
+        // Update Chart every 5 frames to keep UI smooth and stationary
+        if(Math.round(state.t * 10) % 5 === 0) {
+            telChart.data.labels.push(state.t.toFixed(1));
+            telChart.data.datasets[0].data.push(speed);
+            telChart.update('none'); // 'none' skips expensive animations
         }
 
-        function animate() {
-            if (state.y < 0 && state.t > 1) { 
-                isRunning = false; 
-                document.getElementById('status').innerText = "IMPACT";
-                return; 
-            }
+        if(isRunning) requestAnimationFrame(animate);
+    }
 
-            // Physics Loop (dt = 0.1 for browser performance)
-            const dt = 0.1;
-            let m = 14500 + (state.stage === 1 ? state.m1 : state.m2);
-            let thrust = state.stage === 1 ? 700000 : (state.m2 > 0 ? 200000 : 0);
-            let speed = Math.sqrt(state.vx**2 + state.vy**2);
-            let rho = 1.225 * Math.exp(-state.y / 8500); 
-            let drag = 0.5 * rho * speed**2 * 0.45 * (state.stage === 1 ? 4.5 : 2.2);
+    function syncCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', syncCanvas);
+    syncCanvas();
+</script>
 
-            let ax = (thrust * (state.vx/speed) - drag * (state.vx/speed)) / m;
-            let ay = (thrust * (state.vy/speed) - drag * (state.vy/speed) - (9.8 * m)) / m;
-
-            state.vx += ax * dt; state.vy += ay * dt; state.x += state.vx * dt; state.y += state.vy * dt; state.t += dt;
-            if(state.stage === 1) { state.m1 -= 500*dt; if(state.m1 <= 0) state.stage = 2; }
-            else if(state.m2 > 0) state.m2 -= 100*dt;
-
-            // UI Update
-            document.getElementById('alt').innerText = Math.round(state.y);
-            document.getElementById('vel').innerText = Math.round(speed);
-
-            // Render Trajectory
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
-            flightPath.push({x: state.x, y: state.y});
-            ctx.beginPath();
-            flightPath.forEach((p, i) => {
-                let px = 50 + p.x * 0.01;
-                let py = (canvas.height - 50) - p.y * 0.01;
-                if(i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-            });
-            ctx.stroke();
-
-            // Update Chart
-            if(Math.round(state.t * 10) % 10 === 0) {
-                telChart.data.labels.push(state.t.toFixed(0));
-                telChart.data.datasets[0].data.push(speed);
-                telChart.update('none');
-            }
-
-            if(isRunning) requestAnimationFrame(animate);
-        }
-
-        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
-        window.onresize = resize; resize();
-    </script>
 </body>
 </html>
