@@ -7,7 +7,6 @@
     <style>
         :root { --neon: #00ffcc; --bg: #0b0e14; --panel: #151921; }
         
-        /* Strict Viewport Locking */
         body, html { 
             background: var(--bg); color: var(--neon); 
             font-family: 'Courier New', monospace; 
@@ -32,17 +31,20 @@
         
         .viewport-container { 
             flex: 1.5; position: relative; border-bottom: 1px solid #333; 
-            min-height: 0; background: #000; transition: background 2s;
+            min-height: 200px; background: #000; transition: background 2s;
         }
         
-        /* Foolproof Chart.js Wrapper */
+        /* Forces the canvas to lock exactly to the container bounds */
+        #flightCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        
         .chart-section { 
             flex: 1; position: relative; padding: 15px; 
             background: #080a0f; min-height: 0; box-sizing: border-box;
         }
         .chart-wrapper { position: relative; height: 100%; width: 100%; }
 
-        /* Input Styling */
         .input-group { margin-bottom: 12px; border: 1px solid #222; padding: 8px; background: rgba(0,0,0,0.3); }
         .input-group h3 { font-size: 0.75rem; margin: 0 0 8px 0; color: #666; border-bottom: 1px solid #222; }
         .control-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -70,15 +72,15 @@
         <div class="input-group">
             <h3>ENVIRONMENTAL FACTORS</h3>
             <div class="control-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="88"></div>
-            <div class="control-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="50"></div>
-            <div class="control-row"><label>Drag Coeff (Cd)</label><input type="number" id="drag_cd" value="0.42" step="0.01"></div>
+            <div class="control-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="100"></div>
+            <div class="control-row"><label>Drag Coeff (Cd)</label><input type="number" id="drag_cd" value="0.40" step="0.01"></div>
         </div>
 
         <div class="input-group">
             <h3>STAGE 1 (BOOSTER)</h3>
-            <div class="control-row"><label>Thrust (N)</label><input type="number" id="s1_thrust" value="720000"></div>
-            <div class="control-row"><label>Fuel Mass (kg)</label><input type="number" id="s1_fuel" value="35000"></div>
-            <div class="control-row"><label>Dry Mass (kg)</label><input type="number" id="s1_dry" value="8500"></div>
+            <div class="control-row"><label>Thrust (N)</label><input type="number" id="s1_thrust" value="950000"></div>
+            <div class="control-row"><label>Fuel Mass (kg)</label><input type="number" id="s1_fuel" value="40000"></div>
+            <div class="control-row"><label>Dry Mass (kg)</label><input type="number" id="s1_dry" value="10000"></div>
         </div>
 
         <div class="input-group">
@@ -133,7 +135,6 @@
         }
     });
 
-    // Resize logic for native canvas
     function resizeCanvas() {
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
@@ -141,7 +142,6 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Formatter to prevent huge numbers from breaking the UI boxes
     function formatNumber(num) {
         if (num > 9999999) return num.toExponential(2);
         return Math.floor(num).toLocaleString();
@@ -150,6 +150,8 @@
     function ignite() {
         if(isRunning) return;
         
+        resizeCanvas(); // Ensure canvas is sized correctly right at launch
+
         const angle = parseFloat(document.getElementById('init_angle').value) * (Math.PI / 180);
         const v0 = parseFloat(document.getElementById('init_v').value);
         
@@ -177,7 +179,6 @@
         const GM = 3.986e14;
         const s = config.state;
         
-        // Physics Logic
         let currentMass = config.s2.dry + config.s2.fuel + (s.stage === 1 ? config.s1.dry + config.s1.fuel : 0);
         let thrust = s.stage === 1 ? config.s1.thrust : (config.s2.fuel > 0 ? config.s2.thrust : 0);
         let speed = Math.sqrt(s.vx**2 + s.vy**2);
@@ -189,10 +190,71 @@
         let ax = (thrust * (s.vx/speed) - drag * (s.vx/speed)) / currentMass;
         let ay = ((thrust * (s.vy/speed) - drag * (s.vy/speed)) / currentMass) - gravity;
 
-        // Extreme speed failsafe (Prevents NaN crashes)
         if (isNaN(ax) || isNaN(ay)) { isRunning = false; return; }
 
         s.vx += ax * dt; s.vy += ay * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.t += dt;
 
         if(s.stage === 1) { config.s1.fuel -= config.s1.flow * dt; if(config.s1.fuel <= 0) s.stage = 2; }
-        else if(config.s2.fuel > 0) config.s2.fuel
+        else if(config.s2.fuel > 0) config.s2.fuel -= config.s2.flow * dt;
+
+        document.getElementById('alt').innerText = formatNumber(s.y);
+        document.getElementById('vel').innerText = formatNumber(speed);
+
+        let skyAlt = Math.min(Math.max(s.y / 80000, 0), 1);
+        sky.style.background = `radial-gradient(circle at bottom, rgba(0,100,255,${1-skyAlt}) 0%, #000 100%)`;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        path.push({x: s.x, y: s.y});
+        
+        // INDEPENDENT SCALING: Ensures horizontal arc stretches to fill the screen regardless of extreme altitude
+        let maxX = Math.max(...path.map(p => Math.abs(p.x)), 10); 
+        let maxY = Math.max(...path.map(p => p.y), 10); 
+        const padX = 40;
+        const padY = 40;
+        
+        const scaleX = (canvas.width - padX * 2) / maxX;
+        const scaleY = (canvas.height - padY * 2) / maxY;
+
+        ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.beginPath();
+        path.forEach((p, i) => {
+            const dx = padX + (p.x * scaleX);
+            const dy = (canvas.height - padY) - (p.y * scaleY);
+            if(i === 0) ctx.moveTo(dx, dy); else ctx.lineTo(dx, dy);
+        });
+        ctx.stroke();
+
+        if(Math.round(s.t * 10) % 10 === 0) {
+            telChart.data.labels.push(s.t.toFixed(0));
+            telChart.data.datasets[0].data.push(speed);
+            telChart.update('none');
+        }
+
+        let escapeV = Math.sqrt(2 * GM / (EarthR + s.y));
+        
+        if (s.y < -10 && s.t > 1) { 
+            isRunning = false; 
+            document.getElementById('status').innerText = "IMPACT DETECTED"; 
+            document.getElementById('status').style.color = "red";
+        } else if (speed >= 299792458) { 
+            isRunning = false; 
+            document.getElementById('status').innerText = "LIGHTSPEED CAPPED"; 
+            document.getElementById('status').style.color = "magenta";
+        } else if (speed > escapeV && s.t > 50) {
+            isRunning = false; 
+            document.getElementById('status').innerText = "DEEP SPACE ORBIT"; 
+            document.getElementById('status').style.color = "magenta";
+        }
+
+        if(isRunning) requestAnimationFrame(animate);
+    }
+
+    function exportData() {
+        const data = `HAT-F CONFIGURATION EXPORT\n---------------------------\nS1 Thrust: ${document.getElementById('s1_thrust').value}\nS2 Thrust: ${document.getElementById('s2_thrust').value}\nCd: ${document.getElementById('drag_cd').value}\nInit V: ${document.getElementById('init_v').value}\nInit Angle: ${document.getElementById('init_angle').value}\n---------------------------\nTIMESTAMP: ${new Date().toISOString()}`;
+        const blob = new Blob([data], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'mission_config.txt'; a.click();
+    }
+</script>
+</body>
+</html>
