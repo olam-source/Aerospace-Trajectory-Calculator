@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HAT-F MISSION CONTROL</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #0b0e14; color: #00ffcc; font-family: monospace; display: flex; height: 100vh; margin: 0; }
+        #side { width: 300px; padding: 20px; border-right: 2px solid #00ffcc; background: #151921; }
+        #main { flex-grow: 1; display: flex; flex-direction: column; }
+        .view { flex: 2; position: relative; border-bottom: 1px solid #333; }
+        canvas { width: 100%; height: 100%; }
+        .stats { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; }
+        .card { border: 1px solid #004433; padding: 10px; background: rgba(0,255,204,0.05); }
+        button { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="side">
+        <h2>HAT-F v6.0</h2>
+        <div class="card">STATUS: <span id="stat">STANDBY</span></div><br>
+        <div class="card">ALTITUDE: <span id="alt">0</span>m</div><br>
+        <div class="card">VELOCITY: <span id="vel">0</span>m/s</div><br>
+        <button onclick="launch()">INITIALIZE LAUNCH</button>
+    </div>
+    <div id="main">
+        <div class="view"><canvas id="flightCanvas"></canvas></div>
+        <div class="stats"><canvas id="velChart"></canvas></div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('flightCanvas').getContext('2d');
+        const vCtx = document.getElementById('velChart').getContext('2d');
+        let data = [], isRun = false, state = {t:0, x:0, y:0, vx:15, vy:100, m1:30000, m2:10000};
+
+        const chart = new Chart(vCtx, { type: 'line', data: { labels: [], datasets: [{ label: 'Vel', data: [], borderColor: '#0cf' }] }, options: { maintainAspectRatio: false }});
+
+        function launch() { if(isRun) return; isRun = true; state = {t:0, x:0, y:0, vx:15, vy:100, m1:30000, m2:10000}; data = []; loop(); }
+
+        function loop() {
+            if (state.y < 0 && state.t > 1) { isRun = false; return; }
+            let m = 12000 + (state.m1 > 0 ? 38000 + state.m1 : state.m2);
+            let thrust = state.m1 > 0 ? 650000 : (state.m2 > 0 ? 180000 : 0);
+            let rho = 1.225 * Math.exp(-state.y / 8000);
+            let speed = Math.sqrt(state.vx**2 + state.vy**2);
+            let drag = 0.5 * rho * speed**2 * 0.45 * (state.m1 > 0 ? 4.5 : 2.0);
+
+            let ax = (thrust*(state.vx/speed) - drag*(state.vx/speed))/m;
+            let ay = (thrust*(state.vy/speed) - drag*(state.vy/speed) - 9.8*m)/m;
+
+            state.vx += ax*0.1; state.vy += ay*0.1; state.x += state.vx*0.1; state.y += state.vy*0.1; state.t += 0.1;
+            if(state.m1 > 0) state.m1 -= 50; else if(state.m2 > 0) state.m2 -= 10;
+
+            document.getElementById('alt').innerText = Math.round(state.y);
+            document.getElementById('vel').innerText = Math.round(speed);
+            
+            ctx.clearRect(0,0,800,600);
+            ctx.strokeStyle = '#0fc'; ctx.beginPath();
+            data.push({x: state.x, y: state.y});
+            data.forEach((p, i) => { if(i==0) ctx.moveTo(50+p.x*0.01, 550-p.y*0.01); else ctx.lineTo(50+p.x*0.01, 550-p.y*0.01); });
+            ctx.stroke();
+
+            if(Math.round(state.t*10)%10==0) { chart.data.labels.push(state.t.toFixed(0)); chart.data.datasets[0].data.push(speed); chart.update(); }
+            requestAnimationFrame(loop);
+        }
+    </script>
+</body>
+</html>
