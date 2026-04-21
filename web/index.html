@@ -2,52 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>HAT-F | Mission Control (Debugged)</title>
+    <title>HAT-F | Mission Control v6.1</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --neon: #00ffcc; --bg: #0b0e14; --panel: #151921; }
-        
-        /* Locking the viewport so it never scrolls */
         body, html { 
             background: var(--bg); color: var(--neon); 
             font-family: 'Courier New', monospace; 
             margin: 0; padding: 0; height: 100vh; width: 100vw;
             overflow: hidden; 
         }
-
         #dashboard { display: flex; height: 100vh; width: 100vw; }
-        
         #sidebar { 
-            width: 320px; background: var(--panel); 
+            width: 300px; background: var(--panel); 
             border-right: 2px solid var(--neon); 
             padding: 20px; box-sizing: border-box;
             display: flex; flex-direction: column;
+            z-index: 10;
         }
-
-        #main-view { 
-            flex-grow: 1; display: flex; flex-direction: column; 
-            height: 100vh; overflow: hidden; 
-        }
-
-        /* Essential Fix: position: relative and min-height: 0 prevents the infinite growth loop */
+        #main-view { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Top Viewport */
         .viewport-container { 
-            flex: 2; position: relative; 
+            flex: 1.5; position: relative; 
             border-bottom: 1px solid #333; 
-            min-height: 0; 
+            min-height: 0; background: radial-gradient(circle at bottom, #111 0%, #000 100%);
         }
-
+        /* Bottom Graph */
         .chart-section { 
             flex: 1; position: relative; 
-            padding: 15px; background: #080a0f; 
+            padding: 10px; background: #080a0f; 
             min-height: 0; 
         }
 
         .stat-card { border: 1px solid #004433; padding: 12px; margin-bottom: 10px; background: rgba(0,255,204,0.03); }
         .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-        .value { font-size: 1.3rem; font-weight: bold; }
-
+        .value { font-size: 1.2rem; font-weight: bold; }
         canvas { display: block; width: 100% !important; height: 100% !important; }
-
         button { 
             background: var(--neon); color: #000; border: none; 
             padding: 15px; cursor: pointer; font-weight: bold; 
@@ -60,10 +51,11 @@
 
 <div id="dashboard">
     <div id="sidebar">
-        <h2 style="margin-top:0;">HAT-F v6.0</h2>
-        <div class="stat-card"><div class="label">Status</div><div id="status" class="value" style="color:yellow;">READY</div></div>
-        <div class="stat-card"><div class="label">Altitude</div><div id="alt" class="value">0</div></div>
-        <div class="stat-card"><div class="label">Velocity</div><div id="vel" class="value">0</div></div>
+        <h2 style="margin:0 0 20px 0; font-size: 1.1rem; border-bottom: 1px solid #333;">MISSION CONTROL</h2>
+        <div class="stat-card"><div class="label">System Status</div><div id="status" class="value" style="color:yellow;">STANDBY</div></div>
+        <div class="stat-card"><div class="label">Altitude</div><div id="alt" class="value">0 m</div></div>
+        <div class="stat-card"><div class="label">Velocity</div><div id="vel" class="value">0 m/s</div></div>
+        <div class="stat-card"><div class="label">Current Stage</div><div id="stage-ui" class="value">N/A</div></div>
         <button onclick="ignite()">ENGAGE LAUNCH</button>
     </div>
 
@@ -92,8 +84,8 @@
         data: { labels: [], datasets: [{ label: 'Velocity (m/s)', data: [], borderColor: '#00ffcc', borderWidth: 2, pointRadius: 0, fill: false }] },
         options: {
             responsive: true,
-            maintainAspectRatio: false, // Critically important for stationary behavior
-            animation: false, // Performance boost for live tracking
+            maintainAspectRatio: false,
+            animation: false,
             scales: {
                 x: { display: true, grid: { color: '#111' }, ticks: { display: false } },
                 y: { grid: { color: '#222' }, ticks: { color: '#888' } }
@@ -109,21 +101,21 @@
         path = [];
         telChart.data.labels = [];
         telChart.data.datasets[0].data = [];
-        document.getElementById('status').innerText = "IN FLIGHT";
+        document.getElementById('status').innerText = "FLIGHT ACTIVE";
         animate();
     }
 
     function animate() {
         if (state.y < 0 && state.t > 1) {
             isRunning = false;
-            document.getElementById('status').innerText = "IMPACT DETECTED";
+            document.getElementById('status').innerText = "LANDED/IMPACT";
             return;
         }
 
-        // --- Optimized Physics Module ---
+        // --- Physics Calculations ---
         const dt = 0.1;
         const totalMass = 12000 + (state.stage === 1 ? 28000 + state.m1 : state.m2);
-        const thrust = state.stage === 1 ? 680000 : (state.m2 > 0 ? 190000 : 0);
+        const thrust = state.stage === 1 ? 720000 : (state.m2 > 0 ? 210000 : 0);
         const speed = Math.sqrt(state.vx**2 + state.vy**2);
         const rho = 1.225 * Math.exp(-state.y / 8500); 
         const drag = 0.5 * rho * speed**2 * 0.4 * (state.stage === 1 ? 4.5 : 2.0);
@@ -133,33 +125,54 @@
 
         state.vx += ax * dt; state.vy += ay * dt; state.x += state.vx * dt; state.y += state.vy * dt; state.t += dt;
         
-        if(state.stage === 1) { state.m1 -= 450 * dt; if(state.m1 <= 0) state.stage = 2; }
-        else if(state.m2 > 0) state.m2 -= 90 * dt;
+        if(state.stage === 1) { 
+            state.m1 -= 480 * dt; 
+            if(state.m1 <= 0) state.stage = 2; 
+        } else if(state.m2 > 0) { 
+            state.m2 -= 100 * dt; 
+        }
 
-        // --- UI Updates ---
+        // --- Update Displays ---
         document.getElementById('alt').innerText = Math.floor(state.y) + " m";
         document.getElementById('vel').innerText = Math.floor(speed) + " m/s";
+        document.getElementById('stage-ui').innerText = state.stage === 1 ? "STAGE 1" : "STAGE 2";
 
-        // --- Stationary Drawing ---
+        // --- DRAWING & AUTO-SCALING LOGIC ---
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        path.push({x: state.x, y: state.y});
+
+        // 1. Find the current boundaries of the flight
+        let maxX = Math.max(...path.map(p => p.x), 100); 
+        let maxY = Math.max(...path.map(p => p.y), 100); 
+
+        // 2. Calculate scale so everything fits with 15% padding
+        const padding = 60;
+        const scaleX = (canvas.width - padding * 2) / maxX;
+        const scaleY = (canvas.height - padding * 2) / maxY;
+        const scale = Math.min(scaleX, scaleY); // Keep aspect ratio 1:1
+
+        // 3. Draw Trajectory
         ctx.strokeStyle = '#00ffcc';
         ctx.lineWidth = 2;
-        path.push({x: state.x, y: state.y});
-        
         ctx.beginPath();
-        const scale = 0.015; // Adjustment to keep flight in view
         path.forEach((p, i) => {
-            const drawX = 50 + (p.x * scale);
-            const drawY = (canvas.height - 50) - (p.y * scale);
+            const drawX = padding + (p.x * scale);
+            const drawY = (canvas.height - padding) - (p.y * scale);
             if(i === 0) ctx.moveTo(drawX, drawY); else ctx.lineTo(drawX, drawY);
         });
         ctx.stroke();
 
-        // Update Chart every 5 frames to keep UI smooth and stationary
+        // 4. Draw Rocket Icon
+        const rX = padding + (state.x * scale);
+        const rY = (canvas.height - padding) - (state.y * scale);
+        ctx.fillStyle = (state.stage === 1) ? "#ff3300" : "#00ffcc";
+        ctx.fillRect(rX - 4, rY - 4, 8, 8);
+
+        // Update Velocity Chart
         if(Math.round(state.t * 10) % 5 === 0) {
             telChart.data.labels.push(state.t.toFixed(1));
             telChart.data.datasets[0].data.push(speed);
-            telChart.update('none'); // 'none' skips expensive animations
+            telChart.update('none');
         }
 
         if(isRunning) requestAnimationFrame(animate);
