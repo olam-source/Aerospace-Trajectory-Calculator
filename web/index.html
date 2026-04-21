@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flight Trajectory Simulator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -232,13 +232,45 @@
             padding: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             position: relative;
-            min-height: 0; /* Prevents flexbox expansion bugs */
+            min-height: 0; 
         }
         
         .chart-wrapper {
             position: relative;
             height: 100%;
             width: 100%;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+                height: auto;
+            }
+            
+            aside {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                flex-shrink: 0;
+            }
+
+            main {
+                padding: 16px;
+                gap: 16px;
+                height: 800px; /* Provides sufficient height for the flex containers on mobile */
+                overflow: visible;
+            }
+
+            .canvas-container {
+                min-height: 350px;
+            }
+
+            .chart-container {
+                min-height: 300px;
+            }
         }
 
     </style>
@@ -361,9 +393,16 @@
     function resizeCanvas() {
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
+        
+        // Redraw path if simulation is paused/finished but window was resized
+        if (!isRunning && pathData.length > 0) {
+            drawPath();
+        }
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    
+    // Use an observer to catch flexbox layout shifts better than a simple window resize event
+    const resizeObserver = new ResizeObserver(() => resizeCanvas());
+    resizeObserver.observe(canvas.parentElement);
 
     function formatNumber(num) {
         if (num > 999999) return num.toExponential(2);
@@ -421,7 +460,39 @@
         telChart.data.datasets[0].data = [];
         
         setStatus('COMPUTING', 'running');
+        
+        // On mobile, automatically scroll down to the canvas when simulation starts
+        if (window.innerWidth <= 768) {
+            document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+        }
+        
         animate();
+    }
+    
+    function drawPath() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (pathData.length === 0) return;
+        
+        let maxX = Math.max(...pathData.map(p => Math.abs(p.x)), 10); 
+        let maxY = Math.max(...pathData.map(p => p.y), 10); 
+        const padX = 40;
+        const padY = 40;
+        
+        const scaleX = (canvas.width - padX * 2) / maxX;
+        const scaleY = (canvas.height - padY * 2) / maxY;
+
+        ctx.strokeStyle = '#38bdf8'; // Sky blue for visibility against dark slate
+        ctx.lineWidth = 2.5; 
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        
+        pathData.forEach((p, i) => {
+            const dx = padX + (p.x * scaleX);
+            const dy = (canvas.height - padY) - (p.y * scaleY);
+            if (i === 0) ctx.moveTo(dx, dy); 
+            else ctx.lineTo(dx, dy);
+        });
+        ctx.stroke();
     }
 
     function animate() {
@@ -474,30 +545,9 @@
             document.getElementById('out_vel').innerText = formatNumber(speed);
         }
 
-        // Draw Canvas (Independent Axis Scaling to ensure path is visible)
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Save path and render
         pathData.push({x: s.x, y: s.y});
-        
-        let maxX = Math.max(...pathData.map(p => Math.abs(p.x)), 10); 
-        let maxY = Math.max(...pathData.map(p => p.y), 10); 
-        const padX = 40;
-        const padY = 40;
-        
-        const scaleX = (canvas.width - padX * 2) / maxX;
-        const scaleY = (canvas.height - padY * 2) / maxY;
-
-        ctx.strokeStyle = '#38bdf8'; // Sky blue for visibility against dark slate
-        ctx.lineWidth = 2.5; 
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        
-        pathData.forEach((p, i) => {
-            const dx = padX + (p.x * scaleX);
-            const dy = (canvas.height - padY) - (p.y * scaleY);
-            if (i === 0) ctx.moveTo(dx, dy); 
-            else ctx.lineTo(dx, dy);
-        });
-        ctx.stroke();
+        drawPath();
 
         // Update Chart
         if(Math.round(s.t * 10) % 10 === 0) {
