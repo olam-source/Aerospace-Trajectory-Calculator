@@ -241,12 +241,14 @@
             width: 100%;
         }
 
-        /* Mobile Responsiveness */
+        /* HARD-FIXED Mobile Responsiveness */
         @media (max-width: 768px) {
             body {
                 flex-direction: column;
-                overflow-y: auto;
                 height: auto;
+                min-height: 100vh;
+                overflow-y: auto; /* Force allow standard scrolling */
+                overflow-x: hidden;
             }
             
             aside {
@@ -254,22 +256,28 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border);
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                flex-shrink: 0;
+                flex: none; /* Break out of flex sizing */
+                overflow-y: visible; /* Prevent trapped scrolling inside the sidebar */
             }
 
             main {
+                width: 100%;
                 padding: 16px;
                 gap: 16px;
-                height: 800px; /* Provides sufficient height for the flex containers on mobile */
+                height: auto; 
+                flex: none; /* Break out of flex sizing */
                 overflow: visible;
+                padding-bottom: 40px; /* Give some breathing room at the bottom of the page */
             }
 
             .canvas-container {
-                min-height: 350px;
+                height: 350px; /* Explicit block height */
+                flex: none;
             }
 
             .chart-container {
-                min-height: 300px;
+                height: 300px; /* Explicit block height */
+                flex: none;
             }
         }
 
