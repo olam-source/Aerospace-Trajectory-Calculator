@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flight Trajectory Simulator</title>
+    <title>Orbital Trajectory Simulator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Modern, clean CSS variables */
@@ -17,7 +17,7 @@
             --primary-hover: #1d4ed8;
             --danger: #ef4444;
             --success: #10b981;
-            --sim-bg: #0f172a; /* Dark slate for the simulation canvas */
+            --sim-bg: #09090b; /* Deep space black */
         }
 
         * {
@@ -50,10 +50,13 @@
         .sidebar-header {
             padding: 24px 24px 16px;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .sidebar-header h1 {
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             font-weight: 600;
             color: var(--text-main);
         }
@@ -156,6 +159,17 @@
         .btn-secondary:hover {
             background-color: var(--bg-body);
         }
+        
+        .btn-oms {
+            background-color: #334155;
+            color: white;
+            font-size: 0.75rem;
+            padding: 8px;
+        }
+        
+        .btn-oms:hover {
+            background-color: #0f172a;
+        }
 
         /* Telemetry Readout */
         .telemetry-grid {
@@ -172,14 +186,14 @@
         }
 
         .stat-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
             margin-bottom: 4px;
             text-transform: uppercase;
         }
 
         .stat-value {
-            font-size: 1.125rem;
+            font-size: 1rem;
             font-weight: 600;
             color: var(--text-main);
             font-variant-numeric: tabular-nums;
@@ -247,7 +261,7 @@
                 flex-direction: column;
                 height: auto;
                 min-height: 100vh;
-                overflow-y: auto; /* Force allow standard scrolling */
+                overflow-y: auto; 
                 overflow-x: hidden;
             }
             
@@ -256,8 +270,8 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border);
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                flex: none; /* Break out of flex sizing */
-                overflow-y: visible; /* Prevent trapped scrolling inside the sidebar */
+                flex: none; 
+                overflow-y: visible; 
             }
 
             main {
@@ -265,18 +279,18 @@
                 padding: 16px;
                 gap: 16px;
                 height: auto; 
-                flex: none; /* Break out of flex sizing */
+                flex: none; 
                 overflow: visible;
-                padding-bottom: 40px; /* Give some breathing room at the bottom of the page */
+                padding-bottom: 40px; 
             }
 
             .canvas-container {
-                height: 350px; /* Explicit block height */
+                height: 400px; 
                 flex: none;
             }
 
             .chart-container {
-                height: 300px; /* Explicit block height */
+                height: 300px; 
                 flex: none;
             }
         }
@@ -288,48 +302,62 @@
     <aside>
         <div class="sidebar-header">
             <h1>Flight Parameters</h1>
+            <span id="status_badge" class="status-badge">IDLE</span>
         </div>
         
         <div class="sidebar-content">
-            <div class="card">
-                <div class="card-title">Environment</div>
-                <div class="input-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="88"></div>
-                <div class="input-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="100"></div>
-                <div class="input-row"><label>Drag Coeff (Cd)</label><input type="number" id="drag_cd" value="0.40" step="0.01"></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Stage 1 (Booster)</div>
-                <div class="input-row"><label>Thrust (N)</label><input type="number" id="s1_thrust" value="950000"></div>
-                <div class="input-row"><label>Fuel Mass (kg)</label><input type="number" id="s1_fuel" value="40000"></div>
-                <div class="input-row"><label>Dry Mass (kg)</label><input type="number" id="s1_dry" value="10000"></div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Stage 2 (Orbiter)</div>
-                <div class="input-row"><label>Thrust (N)</label><input type="number" id="s2_thrust" value="210000"></div>
-                <div class="input-row"><label>Fuel Mass (kg)</label><input type="number" id="s2_fuel" value="12000"></div>
-                <div class="input-row"><label>Dry Mass (kg)</label><input type="number" id="s2_dry" value="2500"></div>
-            </div>
-
             <div class="actions">
-                <button class="btn-primary" onclick="runSimulation()">Run Sim</button>
+                <button class="btn-primary" onclick="runSimulation()">Launch</button>
                 <button class="btn-secondary" onclick="exportConfig()">Export</button>
             </div>
 
-            <div class="card" style="margin-bottom: 0;">
-                <div class="card-title">
-                    Telemetry
-                    <span id="status_badge" class="status-badge">IDLE</span>
+            <div class="card">
+                <div class="card-title">Launch Setup</div>
+                <div class="input-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="80"></div>
+                <div class="input-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="50"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Stage 1 & 2</div>
+                <div class="input-row"><label>S1 Thrust (N)</label><input type="number" id="s1_thrust" value="950000"></div>
+                <div class="input-row"><label>S1 Fuel (kg)</label><input type="number" id="s1_fuel" value="40000"></div>
+                <div class="input-row"><label>S2 Thrust (N)</label><input type="number" id="s2_thrust" value="210000"></div>
+                <div class="input-row"><label>S2 Fuel (kg)</label><input type="number" id="s2_fuel" value="12000"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Manual OMS Control</div>
+                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px;">
+                    Use RCS thrusters in space to adjust your orbit interactively.
                 </div>
+                <div class="actions" style="margin-bottom: 0;">
+                    <button class="btn-oms" onclick="applyOMS(150)">+ Prograde (150m/s)</button>
+                    <button class="btn-oms" onclick="applyOMS(-150)">- Retrograde (150m/s)</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-title">Orbital Telemetry</div>
                 <div class="telemetry-grid">
                     <div class="stat-box">
-                        <div class="stat-label">Altitude (m)</div>
+                        <div class="stat-label">Altitude (km)</div>
                         <div class="stat-value" id="out_alt">0</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Velocity (m/s)</div>
                         <div class="stat-value" id="out_vel">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Apoapsis (km)</div>
+                        <div class="stat-value" id="out_ap">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Periapsis (km)</div>
+                        <div class="stat-value" id="out_pe">-</div>
+                    </div>
+                    <div class="stat-box" style="grid-column: span 2;">
+                        <div class="stat-label">Eccentricity</div>
+                        <div class="stat-value" id="out_ecc">0.000</div>
                     </div>
                 </div>
             </div>
@@ -353,7 +381,11 @@
     const ctx = canvas.getContext('2d');
     const chartCtx = document.getElementById('telemetryChart').getContext('2d');
 
+    const R_EARTH = 6371000;
+    const GM = 3.986004418e14;
+
     let isRunning = false;
+    let hasAchievedOrbit = false;
     let pathData = [];
     let config = {};
 
@@ -365,8 +397,8 @@
             datasets: [{ 
                 label: 'Velocity (m/s)', 
                 data: [], 
-                borderColor: '#2563eb', 
-                backgroundColor: 'rgba(37, 99, 235, 0.05)', 
+                borderColor: '#10b981', 
+                backgroundColor: 'rgba(16, 185, 129, 0.05)', 
                 borderWidth: 2, 
                 fill: true, 
                 pointRadius: 0,
@@ -382,11 +414,8 @@
                 mode: 'index',
             },
             scales: { 
-                x: { 
-                    display: false 
-                }, 
+                x: { display: false }, 
                 y: { 
-                    beginAtZero: true,
                     grid: { color: '#f1f5f9' },
                     border: { display: false }
                 } 
@@ -401,45 +430,93 @@
     function resizeCanvas() {
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
-        
-        // Redraw path if simulation is paused/finished but window was resized
-        if (!isRunning && pathData.length > 0) {
-            drawPath();
-        }
+        if (!isRunning && pathData.length > 0) drawPath();
     }
     
-    // Use an observer to catch flexbox layout shifts better than a simple window resize event
     const resizeObserver = new ResizeObserver(() => resizeCanvas());
     resizeObserver.observe(canvas.parentElement);
 
-    function formatNumber(num) {
-        if (num > 999999) return num.toExponential(2);
+    function formatNum(num) {
+        if (isNaN(num) || !isFinite(num)) return "ERR";
+        if (num > 999999999) return num.toExponential(2);
         return Math.floor(num).toLocaleString();
     }
 
     function setStatus(text, type) {
         const badge = document.getElementById('status_badge');
         badge.innerText = text;
-        
-        // Reset styles
         badge.style.background = '#e2e8f0';
         badge.style.color = '#475569';
 
         if (type === 'running') {
-            badge.style.background = '#dcfce7';
-            badge.style.color = '#166534';
+            badge.style.background = '#dbeafe';
+            badge.style.color = '#1e40af';
         } else if (type === 'error' || type === 'impact') {
             badge.style.background = '#fee2e2';
             badge.style.color = '#991b1b';
         } else if (type === 'success') {
-            badge.style.background = '#dbeafe';
-            badge.style.color = '#1e40af';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#166534';
+        } else if (type === 'warn') {
+            badge.style.background = '#fef08a';
+            badge.style.color = '#854d0e';
+        }
+    }
+
+    // Keplerian Math for Orbital Elements
+    function getOrbitalElements(x, y, vx, vy) {
+        const r = Math.sqrt(x*x + y*y);
+        const v2 = vx*vx + vy*vy;
+        
+        // Specific orbital energy
+        const energy = (v2 / 2) - (GM / r);
+        
+        // Semi-major axis
+        const a = -GM / (2 * energy);
+        
+        // Eccentricity Vector
+        const r_dot_v = x*vx + y*vy;
+        const ex = (1/GM) * ((v2 - GM/r)*x - r_dot_v*vx);
+        const ey = (1/GM) * ((v2 - GM/r)*y - r_dot_v*vy);
+        const e = Math.sqrt(ex*ex + ey*ey);
+
+        let ap = a * (1 + e);
+        let pe = a * (1 - e);
+
+        // Hyperbolic escape trajectory catch
+        if (e >= 1) {
+            ap = Infinity;
+            pe = a * (1 - e); // pe is still valid for hyperbola
+        }
+
+        return {
+            eccentricity: e,
+            apoapsis: ap - R_EARTH,
+            periapsis: pe - R_EARTH
+        };
+    }
+
+    function applyOMS(deltaV) {
+        if (!config.state) return;
+        
+        let s = config.state;
+        let speed = Math.sqrt(s.vx**2 + s.vy**2);
+        
+        // Apply delta V prograde or retrograde
+        s.vx += (s.vx / speed) * deltaV;
+        s.vy += (s.vy / speed) * deltaV;
+
+        if (!isRunning) {
+            // Resume simulation if user thrusts out of a paused state
+            hasAchievedOrbit = false; 
+            isRunning = true;
+            setStatus('MANEUVERING', 'running');
+            animate();
         }
     }
 
     function runSimulation() {
         if(isRunning) return;
-        
         resizeCanvas();
 
         const angleRad = parseFloat(document.getElementById('init_angle').value) * (Math.PI / 180);
@@ -449,27 +526,33 @@
             s1: { 
                 thrust: parseFloat(document.getElementById('s1_thrust').value), 
                 fuel: parseFloat(document.getElementById('s1_fuel').value), 
-                dry: parseFloat(document.getElementById('s1_dry').value), 
-                flow: 550 
+                dry: 10000, flow: 550 
             },
             s2: { 
                 thrust: parseFloat(document.getElementById('s2_thrust').value), 
                 fuel: parseFloat(document.getElementById('s2_fuel').value), 
-                dry: parseFloat(document.getElementById('s2_dry').value), 
-                flow: 110 
+                dry: 2500, flow: 110 
             },
-            cd: parseFloat(document.getElementById('drag_cd').value),
-            state: { t: 0, x: 0, y: 0, vx: v0 * Math.cos(angleRad), vy: v0 * Math.sin(angleRad), stage: 1 }
+            // Start at North Pole of the spherical earth for simplicity (x=0, y=R)
+            // Launch angle is relative to local horizon (x axis)
+            state: { 
+                t: 0, 
+                x: 0, 
+                y: R_EARTH + 1, 
+                vx: v0 * Math.cos(angleRad), 
+                vy: v0 * Math.sin(angleRad), 
+                stage: 1 
+            }
         };
 
         isRunning = true;
+        hasAchievedOrbit = false;
         pathData = [];
         telChart.data.labels = [];
         telChart.data.datasets[0].data = [];
         
-        setStatus('COMPUTING', 'running');
+        setStatus('ASCENT', 'running');
         
-        // On mobile, automatically scroll down to the canvas when simulation starts
         if (window.innerWidth <= 768) {
             document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
         }
@@ -479,58 +562,88 @@
     
     function drawPath() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Determine scaling based on furthest point + earth
+        let maxDist = R_EARTH;
+        pathData.forEach(p => {
+            let d = Math.sqrt(p.x**2 + p.y**2);
+            if (d > maxDist) maxDist = d;
+        });
+        
+        maxDist *= 1.15; // 15% padding
+        
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const scale = Math.min(cx, cy) / maxDist;
+
+        // Draw Earth
+        ctx.beginPath();
+        ctx.arc(cx, cy, R_EARTH * scale, 0, 2*Math.PI);
+        ctx.fillStyle = '#0f172a'; // Match background somewhat
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#3b82f6'; // Blue outline for atmosphere
+        ctx.stroke();
+
+        // Draw Dot for Earth Center (reference)
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2, 0, 2*Math.PI);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fill();
+
+        // Draw Trajectory
         if (pathData.length === 0) return;
         
-        let maxX = Math.max(...pathData.map(p => Math.abs(p.x)), 10); 
-        let maxY = Math.max(...pathData.map(p => p.y), 10); 
-        const padX = 40;
-        const padY = 40;
-        
-        const scaleX = (canvas.width - padX * 2) / maxX;
-        const scaleY = (canvas.height - padY * 2) / maxY;
-
-        ctx.strokeStyle = '#38bdf8'; // Sky blue for visibility against dark slate
-        ctx.lineWidth = 2.5; 
+        ctx.strokeStyle = '#f43f5e'; // Rose color for hot trajectory
+        ctx.lineWidth = 2; 
         ctx.lineJoin = 'round';
         ctx.beginPath();
         
         pathData.forEach((p, i) => {
-            const dx = padX + (p.x * scaleX);
-            const dy = (canvas.height - padY) - (p.y * scaleY);
+            const dx = cx + (p.x * scale);
+            const dy = cy - (p.y * scale); // Invert Y for canvas
             if (i === 0) ctx.moveTo(dx, dy); 
             else ctx.lineTo(dx, dy);
         });
         ctx.stroke();
+
+        // Draw Current Craft Position
+        const last = pathData[pathData.length - 1];
+        if (last) {
+            ctx.beginPath();
+            ctx.arc(cx + (last.x * scale), cy - (last.y * scale), 4, 0, 2*Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+        }
     }
 
     function animate() {
         if (!isRunning) return;
 
-        const dt = 0.15;
-        const R_EARTH = 6371000;
-        const GM = 3.986e14;
+        const dt = 0.5; // Slightly faster timestep for orbital mechanics
         const s = config.state;
         
-        // Mass calculation
+        let r = Math.sqrt(s.x**2 + s.y**2);
+        let alt = r - R_EARTH;
+
         let currentMass = config.s2.dry + config.s2.fuel;
-        if (s.stage === 1) currentMass += (config.s1.dry + config.s1.fuel);
+        if (s.stage === 1) currentMass += (10000 + config.s1.fuel);
 
         let thrust = s.stage === 1 ? config.s1.thrust : (config.s2.fuel > 0 ? config.s2.thrust : 0);
         let speed = Math.sqrt(s.vx**2 + s.vy**2);
         
-        // Physics
-        let gravity = GM / Math.pow(R_EARTH + s.y, 2);
-        let rho = s.y > 100000 ? 0 : 1.225 * Math.exp(-s.y / 8500); 
-        let drag = 0.5 * rho * speed**2 * config.cd * (s.stage === 1 ? 4.5 : 2.0);
+        // Gravity Vector (pulls towards 0,0)
+        let gForce = GM / (r*r);
+        let gx = -gForce * (s.x / r);
+        let gy = -gForce * (s.y / r);
 
-        let ax = (thrust * (s.vx/speed) - drag * (s.vx/speed)) / currentMass;
-        let ay = ((thrust * (s.vy/speed) - drag * (s.vy/speed)) / currentMass) - gravity;
+        // Simple Drag
+        let rho = alt > 100000 ? 0 : 1.225 * Math.exp(-alt / 8500); 
+        let dragForce = 0.5 * rho * speed**2 * 0.4 * (s.stage === 1 ? 4.5 : 2.0);
 
-        if (isNaN(ax) || isNaN(ay)) { 
-            isRunning = false; 
-            setStatus('MATH ERROR', 'error');
-            return; 
-        }
+        // Accelerations
+        let ax = (thrust * (s.vx/speed) - dragForce * (s.vx/speed)) / currentMass + gx;
+        let ay = (thrust * (s.vy/speed) - dragForce * (s.vy/speed)) / currentMass + gy;
 
         // Integration
         s.vx += ax * dt; 
@@ -539,7 +652,7 @@
         s.y += s.vy * dt; 
         s.t += dt;
 
-        // Stage Logic
+        // Burn Fuel
         if (s.stage === 1) { 
             config.s1.fuel -= config.s1.flow * dt; 
             if (config.s1.fuel <= 0) s.stage = 2; 
@@ -547,66 +660,52 @@
             config.s2.fuel -= config.s2.flow * dt;
         }
 
-        // DOM Updates
-        if (Math.round(s.t * 10) % 5 === 0) {
-            document.getElementById('out_alt').innerText = formatNumber(s.y);
-            document.getElementById('out_vel').innerText = formatNumber(speed);
+        // Keplerian Stats
+        let orbit = getOrbitalElements(s.x, s.y, s.vx, s.vy);
+
+        // UI Updates (throttle to save DOM performance)
+        if (Math.round(s.t * 10) % 10 === 0) {
+            document.getElementById('out_alt').innerText = formatNum(alt / 1000);
+            document.getElementById('out_vel').innerText = formatNum(speed);
+            document.getElementById('out_ecc').innerText = orbit.eccentricity.toFixed(3);
+            
+            document.getElementById('out_ap').innerText = formatNum(orbit.apoapsis / 1000);
+            document.getElementById('out_pe').innerText = formatNum(orbit.periapsis / 1000);
         }
 
-        // Save path and render
-        pathData.push({x: s.x, y: s.y});
-        drawPath();
+        // Save path and render (only save every few frames so array doesn't explode)
+        if (Math.round(s.t * 10) % 5 === 0) {
+            pathData.push({x: s.x, y: s.y});
+            drawPath();
+        }
 
         // Update Chart
-        if(Math.round(s.t * 10) % 10 === 0) {
+        if(Math.round(s.t * 10) % 20 === 0) {
             telChart.data.labels.push(s.t.toFixed(0));
             telChart.data.datasets[0].data.push(speed);
             telChart.update('none');
         }
 
-        // Termination Conditions
-        let escapeV = Math.sqrt(2 * GM / (R_EARTH + s.y));
-
-        if (s.y < -10 && s.t > 1) { 
+        // Termination / Auto-Pause Conditions
+        if (alt < 0 && s.t > 5) { 
             isRunning = false; 
-            setStatus('IMPACT', 'impact');
-        } else if (speed >= 299792458) { 
-            isRunning = false; 
-            setStatus('SPEED LIMIT', 'error');
-        } else if (speed > escapeV && s.t > 50) {
-            isRunning = false; 
-            setStatus('ORBIT ACHIEVED', 'success');
+            setStatus('LITHOBRAKING (CRASH)', 'impact');
+        } 
+        else if (orbit.eccentricity >= 1 && alt > 200000 && !hasAchievedOrbit) {
+            isRunning = false;
+            hasAchievedOrbit = true; // Prevent infinite re-pausing
+            setStatus('ESCAPE VELOCITY (PAUSED)', 'warn');
+        }
+        else if (orbit.eccentricity < 1 && orbit.periapsis > 150000 && !hasAchievedOrbit) {
+            isRunning = false;
+            hasAchievedOrbit = true;
+            setStatus('STABLE ORBIT (PAUSED)', 'success');
         }
 
-        if (isRunning) requestAnimationFrame(animate);
-    }
+        // Stop memory leaks by dropping old path data if orbit takes forever
+        if (pathData.length > 5000) pathData.shift();
 
-    function exportConfig() {
-        const payload = {
-            timestamp: new Date().toISOString(),
-            environment: {
-                angle: parseFloat(document.getElementById('init_angle').value),
-                velocity: parseFloat(document.getElementById('init_v').value),
-                dragCd: parseFloat(document.getElementById('drag_cd').value)
-            },
-            stage1: {
-                thrust: parseFloat(document.getElementById('s1_thrust').value),
-                fuel: parseFloat(document.getElementById('s1_fuel').value),
-                dry: parseFloat(document.getElementById('s1_dry').value)
-            },
-            stage2: {
-                thrust: parseFloat(document.getElementById('s2_thrust').value),
-                fuel: parseFloat(document.getElementById('s2_fuel').value),
-                dry: parseFloat(document.getElementById('s2_dry').value)
-            }
-        };
-        
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; 
-        a.download = `trajectory_config_${Date.now()}.json`; 
-        a.click();
+        if (isRunning) requestAnimationFrame(animate);
     }
 </script>
 </body>
