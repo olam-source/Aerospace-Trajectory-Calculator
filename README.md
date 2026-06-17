@@ -1,7 +1,7 @@
 # High-Fidelity Aerospace Trajectory Framework (HAT-F) v6.0
 
 ## 📂 Project Structure
-* **[Live Mission Control](https://yourusername.github.io/your-repo/web/index.html)**: Interactive Web Dashboard.
+* **[Live Mission Control](https://yourusername.github.io/Aerospace-Trajectory-Calculator/web/index.html)**: Interactive Web Dashboard.
 * **[/src](./src)**: Modular Java Backend (Multistage Physics Engine).
 * **[/web](./web)**: Frontend Visualization (HTML5/JavaScript).
 
