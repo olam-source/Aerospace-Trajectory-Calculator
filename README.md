@@ -5,7 +5,7 @@
 A full-fledged aerospace trajectory calculator transformed into a science exhibition with equal priority on physics accuracy, UI/UX design, educational content, and data sharing.
 
 ## 🌐 Live Demo
-**[Open the Interactive Simulator](https://olam-source.github.io/Aerospace-Trajectory-Calculator/index.html)**
+**[Open the Interactive Simulator](https://olam-source.github.io/Aerospace-Trajectory-Calculator/web/index.html)**
 
 ## 📦 Project Structure
 - **`/src/com/aerospace/`** — Java backend: RK4 integrator, ISA 1976 atmosphere model (9 layers), Mach-dependent drag, rocket vehicle models, simulation logger
