@@ -5,11 +5,11 @@
 A full-fledged aerospace trajectory calculator transformed into a science exhibition with equal priority on physics accuracy, UI/UX design, educational content, and data sharing.
 
 ## 🌐 Live Demo
-**[Open the Interactive Simulator](https://olam-source.github.io/Aerospace-Trajectory-Calculator/)**
+**[Open the Interactive Simulator](https://olam-source.github.io/Aerospace-Trajectory-Calculator/index.html)**
 
 ## 📦 Project Structure
 - **`/src/com/aerospace/`** — Java backend: RK4 integrator, ISA 1976 atmosphere model (9 layers), Mach-dependent drag, rocket vehicle models, simulation logger
-- **`/web/`** — HTML5/JavaScript frontend: glassmorphism UI, 5 visualization modes, touch optimizations, Web Audio API sound effects
+- **`/docs/`** — HTML5/JavaScript frontend (`index.html`) and documentation content for GitHub Pages
 - **`/README.md`** — This file: feature overview, quick start, mission parameters, orbital mechanics reference
 - **`/docs/science-exhibition-guide.md`** — STEM lesson plans for orbital mechanics, propulsion, atmospheric physics, numerical integration
 - **`/docs/api-reference.md`** — REST API endpoint reference and example commands
@@ -66,7 +66,7 @@ java com.aerospace.Main saturn-v standard
 ```
 
 ### From Web Browser
-1. Open `web/index.html` in any modern browser
+1. Open `docs/index.html` in any modern browser
 2. Select a rocket preset from the UI
 3. Adjust launch angle (default: 80°) and initial velocity (default: 50 m/s)
 4. Click **Launch** and watch the trajectory
@@ -132,7 +132,7 @@ java com.aerospace.Main starship orbital
 - `recordTelemetry(time, position, velocity, mass, stage, altitude)` — Record per-step data
 - `recordEvent(time, type, description, altitude, velocity)` — Track significant events
 
-### UI Controls (web/index.html)
+### UI Controls (docs/index.html)
 - **Launch** — Start the simulation
 - **Show Science** — Toggle physics tooltips on/off
 - **Visualization Mode Buttons** — Switch between 5 modes
@@ -188,4 +188,3 @@ java com.aerospace.Main starship orbital
 ### v1.0 — Initial Release
 - Basic Euler integration, simple atmosphere model
 - Single canvas visualization
-
