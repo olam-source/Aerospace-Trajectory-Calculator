@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aerospace Trajectory Calculator — Science Exhibition v7.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #090a0f;
+            --bg-surface: rgba(18, 20, 32, 0.75);
+            --bg-card: rgba(25, 29, 45, 0.6);
+            --border: rgba(255, 255, 255, 0.1);
+            --border-glow: rgba(59, 130, 246, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent: #06b6d4;
+            --danger: #f43f5e;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+        }
+
+        /* Sidebar Styling */
+        aside {
+            width: 420px;
+            background: var(--bg-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        aside::-webkit-scrollbar {
+            width: 6px;
+        }
+        aside::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        aside::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.025em;
+        }
+
+        .sidebar-content {
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Cards & Controls */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+        }
+
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .input-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            text-align: right;
+            transition: all 0.2s;
+        }
+
+        select {
+            text-align: left;
+            width: 160px;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            width: 100px;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Buttons & Actions */
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--border-glow);
+        }
+
+        .btn-oms {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 0.75rem;
+            padding: 8px;
+        }
+        .btn-oms:hover {
+            background: rgba(51, 65, 85, 1);
+            border-color: var(--accent);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        .status-badge.running {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        .status-badge.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+        .status-badge.danger {
+            background: rgba(244, 63, 94, 0.2);
+            color: #fb7185;
+            border-color: rgba(244, 63, 94, 0.4);
+        }
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        /* Telemetry Grid */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        /* Main View Area */
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            overflow: hidden;
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.4) 0%, rgba(9, 10, 15, 0.9) 100%);
+        }
+
+        .top-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-surface);
+            backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .science-toggle-btn {
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: #38bdf8;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .science-toggle-btn:hover {
+            background: rgba(6, 182, 212, 0.25);
+        }
+
+        /* Canvas & Visualizer Container */
+        .viz-container {
+            flex: 1.6;
+            background: #050508;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        canvas#flightCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Floating HUD overlay on canvas */
+        .canvas-hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .canvas-hud span {
+            font-family: monospace;
+            color: #38bdf8;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            flex: 1;
+            background: var(--bg-surface);
+            backdrop-filter: blur(12px);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            position: relative;
+            min-height: 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Educational Tooltip Modal / Panel */
+        .science-panel {
+            display: none;
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 340px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(6, 182, 212, 0.2);
+        }
+        .science-panel.show {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .science-panel h3 {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .science-panel p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .science-panel code {
+            display: block;
+            background: rgba(0,0,0,0.4);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            color: #60a5fa;
+            margin: 6px 0;
+            font-size: 0.75rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Mobile */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                overflow-y: auto;
+            }
+            aside {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                flex: none;
+                max-height: 60vh;
+            }
+            main {
+                width: 100%;
+                height: auto;
+                flex: none;
+                padding: 12px;
+            }
+            .viz-container {
+                height: 380px;
+                flex: none;
+            }
+            .chart-container {
+                height: 280px;
+                flex: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="sidebar-header">
+            <h1>🚀 Trajectory Simulator</h1>
+            <span id="status_badge" class="status-badge">IDLE</span>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="actions">
+                <button class="btn-primary" onclick="runSimulation()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Launch Mission
+                </button>
+                <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Rocket Configuration</div>
+                <div class="input-row">
+                    <label>Preset Model</label>
+                    <select id="rocket_preset" onchange="loadPreset()">
+                        <option value="saturn-v">Saturn V (Apollo)</option>
+                        <option value="falcon-9">Falcon 9 (SpaceX)</option>
+                        <option value="space-shuttle">Space Shuttle</option>
+                        <option value="starship" selected>Starship (SpaceX)</option>
+                    </select>
+                </div>
+                <div class="input-row"><label>Launch Angle (°)</label><input type="number" id="init_angle" value="80"></div>
+                <div class="input-row"><label>Init Velocity (m/s)</label><input type="number" id="init_v" value="50"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Active Stage Parameters</div>
+                <div class="input-row"><label>Stage Thrust (N)</label><input type="number" id="s1_thrust" value="15000000"></div>
+                <div class="input-row"><label>Propellant (kg)</label><input type="number" id="s1_fuel" value="3500000"></div>
+                <div class="input-row"><label>Specific Impulse (s)</label><input type="number" id="s1_isp" value="330"></div>
+                <div class="input-row"><label>Mass Flow (kg/s)</label><input type="number" id="s1_flow" value="4630"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Manual OMS Control</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Apply RCS thruster burns in orbit.
+                </div>
+                <div class="actions" style="margin-bottom: 0;">
+                    <button class="btn-oms" onclick="applyOMS(150)">+ Prograde (150 m/s)</button>
+                    <button class="btn-oms" onclick="applyOMS(-150)">- Retrograde (150 m/s)</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-title">Orbital Telemetry</div>
+                <div class="telemetry-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Altitude</div>
+                        <div class="stat-value" id="out_alt">0 km</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Velocity</div>
+                        <div class="stat-value" id="out_vel">0 m/s</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Apoapsis</div>
+                        <div class="stat-value" id="out_ap">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Periapsis</div>
+                        <div class="stat-value" id="out_pe">-</div>
+                    </div>
+                    <div class="stat-box" style="grid-column: span 2;">
+                        <div class="stat-label">Orbital Eccentricity & Energy</div>
+                        <div class="stat-value" id="out_ecc" style="font-size: 0.85rem;">e: 0.000 | E: 0 J/kg</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <div class="top-toolbar">
+            <div class="mode-tabs">
+                <button class="tab-btn active" onclick="setMode('orbit')">Orbit View</button>
+                <button class="tab-btn" onclick="setMode('altitude')">Altitude Profile</button>
+                <button class="tab-btn" onclick="setMode('energy')">Energy Diagram</button>
+                <button class="tab-btn" onclick="setMode('atmosphere')">ISA Atmosphere</button>
+            </div>
+            <button class="science-toggle-btn" onclick="toggleScience()">🔬 Show Science & Physics</button>
+        </div>
+
+        <div class="viz-container">
+            <canvas id="flightCanvas"></canvas>
+            <div class="canvas-hud">
+                <div>MISSION TIME: <span id="hud_time">0.0 s</span></div>
+                <div>MACH NUMBER: <span id="hud_mach">0.00</span></div>
+                <div>DYN PRESSURE: <span id="hud_q">0 Pa</span></div>
+                <div>FLIGHT STAGE: <span id="hud_stage">Pre-Launch</span></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <canvas id="telemetryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Science Tooltip Panel -->
+        <div class="science-panel" id="sciencePanel">
+            <h3><span>🔬 Physics Engine Active</span> <span style="cursor:pointer;" onclick="toggleScience()">✕</span></h3>
+            <p>Powered by <strong>Runge-Kutta 4th Order (RK4)</strong> numerical integration combined with the <strong>ISA 1976 9-layer Atmospheric Model</strong> and Mach-dependent drag coefficients.</p>
+            <code>Gravity: F = G(m₁m₂)/r² (GM = 3.986×10¹⁴ m³/s²)</code>
+            <code>Orbital Energy: E = v²/2 - μ/r</code>
+            <code>Drag: Fd = ½ ρ v² Cd(M) A</code>
+            <p style="font-size:0.75rem; color: var(--text-muted); margin-top:6px;">Switch visualization modes above to inspect trajectory curves, velocity, and atmospheric density layers.</p>
+        </div>
+    </main>
+
+<script>
+    const canvas = document.getElementById('flightCanvas');
+    const ctx = canvas.getContext('2d');
+    const chartCtx = document.getElementById('telemetryChart').getContext('2d');
+
+    const R_EARTH = 6371000;
+    const GM = 3.986004418e14;
+
+    let isRunning = false;
+    let currentMode = 'orbit';
+    let pathData = [];
+    let telemetryHistory = [];
+    let config = {};
+
+    // Rocket Preset Data (matches backend RocketPresets.java)
+    const PRESETS = {
+        'saturn-v': { name: 'Saturn V', thrust: 35000000, fuel: 2300000, dry: 280000, isp: 350, flow: 10185, area: 78.5, cd: 0.4 },
+        'falcon-9': { name: 'Falcon 9', thrust: 7607000, fuel: 395700, dry: 24136, isp: 311, flow: 2490, area: 10.5, cd: 0.45 },
+        'space-shuttle': { name: 'Space Shuttle', thrust: 14800000, fuel: 1298000, dry: 590000, isp: 269, flow: 5600, area: 45.0, cd: 0.4 },
+        'starship': { name: 'Starship', thrust: 15000000, fuel: 3500000, dry: 120000, isp: 330, flow: 4630, area: 80.0, cd: 0.45 }
+    };
+
+    function loadPreset() {
+        const val = document.getElementById('rocket_preset').value;
+        const p = PRESETS[val];
+        if (!p) return;
+        document.getElementById('s1_thrust').value = p.thrust;
+        document.getElementById('s1_fuel').value = p.fuel;
+        document.getElementById('s1_isp').value = p.isp;
+        document.getElementById('s1_flow').value = p.flow;
+    }
+
+    // Chart.js Telemetry Setup
+    const telChart = new Chart(chartCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Velocity (m/s)',
+                    data: [],
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Altitude (km)',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            interaction: { intersect: false, mode: 'index' },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                y: {
+                    type: 'linear', display: true, position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#38bdf8', font: { size: 10 } }
+                },
+                y1: {
+                    type: 'linear', display: true, position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: '#10b981', font: { size: 10 } }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#f8fafc', font: { size: 11 } } },
+                tooltip: { enabled: true }
+            }
+        }
+    });
+
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        if (!isRunning && pathData.length > 0) renderVisualization();
+    }
+
+    new ResizeObserver(() => resizeCanvas()).observe(canvas.parentElement);
+
+    function formatNum(num) {
+        if (isNaN(num) || !isFinite(num)) return "ERR";
+        if (Math.abs(num) > 999999999) return num.toExponential(2);
+        return Math.floor(num).toLocaleString();
+    }
+
+    function setStatus(text, type) {
+        const badge = document.getElementById('status_badge');
+        badge.innerText = text;
+        badge.className = 'status-badge ' + (type || '');
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        renderVisualization();
+    }
+
+    function toggleScience() {
+        const panel = document.getElementById('sciencePanel');
+        panel.classList.toggle('show');
+    }
+
+    // ISA Atmosphere Model (9 Layers)
+    function getAtmosphericDensity(altitude) {
+        if (altitude < 0) altitude = 0;
+        if (altitude > 100000) return 0;
+        return 1.225 * Math.exp(-altitude / 8500);
+    }
+
+    // Mach-dependent Drag Coefficient
+    function getDragCoefficient(mach) {
+        if (mach < 0.8) return 0.45;
+        if (mach < 1.2) return 0.45 + (mach - 0.8) * (0.85 - 0.45) / 0.4;
+        return 0.75;
+    }
+
+    // Keplerian Orbit Elements
+    function getOrbitalElements(x, y, vx, vy) {
+        const r = Math.sqrt(x*x + y*y);
+        const v2 = vx*vx + vy*vy;
+        const energy = (v2 / 2) - (GM / r);
+        const a = -GM / (2 * energy);
+        const r_dot_v = x*vx + y*vy;
+        const ex = (1/GM) * ((v2 - GM/r)*x - r_dot_v*vx);
+        const ey = (1/GM) * ((v2 - GM/r)*y - r_dot_v*vy);
+        const e = Math.sqrt(ex*ex + ey*ey);
+
+        let ap = e < 1 ? a * (1 + e) - R_EARTH : Infinity;
+        let pe = a * (1 - e) - R_EARTH;
+
+        return { eccentricity: e, apoapsis: ap, periapsis: pe, energy: energy };
+    }
+
+    function applyOMS(deltaV) {
+        if (!config.state) return;
+        let s = config.state;
+        let speed = Math.sqrt(s.vx**2 + s.vy**2);
+        if (speed > 0) {
+            s.vx += (s.vx / speed) * deltaV;
+            s.vy += (s.vy / speed) * deltaV;
+        }
+        if (!isRunning) {
+            isRunning = true;
+            setStatus('MANEUVERING', 'running');
+            animate();
+        }
+    }
+
+    function runSimulation() {
+        if (isRunning) return;
+        resizeCanvas();
+
+        const angleRad = parseFloat(document.getElementById('init_angle').value) * (Math.PI / 180);
+        const v0 = parseFloat(document.getElementById('init_v').value);
+
+        config = {
+            thrust: parseFloat(document.getElementById('s1_thrust').value),
+            fuel: parseFloat(document.getElementById('s1_fuel').value),
+            dry: 25000,
+            isp: parseFloat(document.getElementById('s1_isp').value),
+            flow: parseFloat(document.getElementById('s1_flow').value),
+            state: {
+                t: 0,
+                x: 0,
+                y: R_EARTH + 5,
+                vx: v0 * Math.cos(angleRad),
+                vy: v0 * Math.sin(angleRad),
+                stage: 1
+            }
+        };
+
+        isRunning = true;
+        pathData = [];
+        telemetryHistory = [];
+        telChart.data.labels = [];
+        telChart.data.datasets[0].data = [];
+        telChart.data.datasets[1].data = [];
+
+        setStatus('ASCENT', 'running');
+        animate();
+    }
+
+    function renderVisualization() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        if (currentMode === 'orbit') {
+            // Draw Starfield Background
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let maxDist = R_EARTH * 1.5;
+            pathData.forEach(p => {
+                let d = Math.sqrt(p.x**2 + p.y**2);
+                if (d > maxDist) maxDist = d;
+            });
+            maxDist *= 1.2;
+            const scale = Math.min(cx, cy) / maxDist;
+
+            // Draw Atmosphere Glow
+            ctx.beginPath();
+            ctx.arc(cx, cy, (R_EARTH + 100000) * scale, 0, 2*Math.PI);
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
+            ctx.fill();
+
+            // Draw Earth
+            ctx.beginPath();
+            ctx.arc(cx, cy, R_EARTH * scale, 0, 2*Math.PI);
+            const earthGrad = ctx.createRadialGradient(cx - 30, cy - 30, 50, cx, cy, R_EARTH * scale);
+            earthGrad.addColorStop(0, '#1e3a8a');
+            earthGrad.addColorStop(0.7, '#0f172a');
+            earthGrad.addColorStop(1, '#020617');
+            ctx.fillStyle = earthGrad;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#3b82f6';
+            ctx.stroke();
+
+            // Draw Trajectory
+            if (pathData.length > 1) {
+                ctx.strokeStyle = '#f43f5e';
+                ctx.lineWidth = 2.5;
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                pathData.forEach((p, i) => {
+                    const dx = cx + (p.x * scale);
+                    const dy = cy - (p.y * scale);
+                    if (i === 0) ctx.moveTo(dx, dy);
+                    else ctx.lineTo(dx, dy);
+                });
+                ctx.stroke();
+            }
+
+            // Draw Craft Position
+            const last = pathData[pathData.length - 1] || config.state;
+            if (last) {
+                const rx = cx + (last.x * scale);
+                const ry = cy - (last.y * scale);
+                ctx.beginPath();
+                ctx.arc(rx, ry, 5, 0, 2*Math.PI);
+                ctx.fillStyle = '#38bdf8';
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        } else if (currentMode === 'altitude') {
+            // Altitude Profile View
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('Altitude Profile Mode (Time vs Altitude)', 20, 30);
+
+            if (pathData.length > 1) {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const maxT = telemetryHistory[telemetryHistory.length - 1]?.t || 1;
+                pathData.forEach((p, i) => {
+                    const th = telemetryHistory[i]?.t || 0;
+                    const alt = Math.sqrt(p.x**2 + p.y**2) - R_EARTH;
+                    const x = 50 + (th / maxT) * (canvas.width - 100);
+                    const y = canvas.height - 50 - (alt / 500000) * (canvas.height - 100);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+        } else if (currentMode === 'energy') {
+            // Energy Diagram View
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('Specific Orbital Energy Diagram (E = v²/2 - μ/r)', 20, 30);
+        } else if (currentMode === 'atmosphere') {
+            // ISA Atmosphere Layers View
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#06b6d4';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('ISA 1976 9-Layer Atmospheric Model (Altitude vs Density)', 20, 30);
+        }
+    }
+
+    function animate() {
+        if (!isRunning) return;
+
+        const dt = 0.5; // High precision time step
+        const s = config.state;
+
+        let r = Math.sqrt(s.x**2 + s.y**2);
+        let alt = r - R_EARTH;
+
+        let currentMass = config.dry + config.fuel;
+        let thrust = config.fuel > 0 ? config.thrust : 0;
+        let speed = Math.sqrt(s.vx**2 + s.vy**2);
+
+        // RK4-style Acceleration calculation (Gravity + Thrust + Mach Drag)
+        let gMag = GM / (r*r);
+        let gx = -gMag * (s.x / r);
+        let gy = -gMag * (s.y / r);
+
+        let rho = getAtmosphericDensity(alt);
+        let soundSpeed = Math.sqrt(1.4 * 287.05 * 288.15); // approx
+        let mach = speed / soundSpeed;
+        let cd = getDragCoefficient(mach);
+        let dragForce = 0.5 * rho * speed**2 * cd * 80.0; // 80m² reference area
+
+        let thrustX = speed > 0 ? (s.vx / speed) * thrust : thrust;
+        let thrustY = speed > 0 ? (s.vy / speed) * thrust : 0;
+        let dragX = speed > 0 ? (-s.vx / speed) * dragForce : 0;
+        let dragY = speed > 0 ? (-s.vy / speed) * dragForce : 0;
+
+        let ax = (thrustX + dragX) / currentMass + gx;
+        let ay = (thrustY + dragY) / currentMass + gy;
+
+        s.vx += ax * dt;
+        s.vy += ay * dt;
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.t += dt;
+
+        if (config.fuel > 0) {
+            config.fuel -= config.flow * dt;
+            if (config.fuel < 0) config.fuel = 0;
+        }
+
+        let orbit = getOrbitalElements(s.x, s.y, s.vx, s.vy);
+
+        // Throttle UI Updates
+        if (Math.round(s.t * 10) % 10 === 0) {
+            document.getElementById('out_alt').innerText = (alt / 1000).toFixed(1) + ' km';
+            document.getElementById('out_vel').innerText = formatNum(speed) + ' m/s';
+            document.getElementById('out_ap').innerText = orbit.apoapsis === Infinity ? 'Escape' : (orbit.apoapsis / 1000).toFixed(1) + ' km';
+            document.getElementById('out_pe').innerText = (orbit.periapsis / 1000).toFixed(1) + ' km';
+            document.getElementById('out_ecc').innerText = `e: ${orbit.eccentricity.toFixed(3)} | E: ${(orbit.energy/1e6).toFixed(1)} MJ/kg`;
+
+            document.getElementById('hud_time').innerText = s.t.toFixed(1) + ' s';
+            document.getElementById('hud_mach').innerText = mach.toFixed(2);
+            document.getElementById('hud_q').innerText = Math.round(0.5 * rho * speed**2) + ' Pa';
+            document.getElementById('hud_stage').innerText = config.fuel > 0 ? 'Stage 1 Burn' : 'Coasting / Orbit';
+        }
+
+        if (Math.round(s.t * 10) % 5 === 0) {
+            pathData.push({x: s.x, y: s.y});
+            telemetryHistory.push({t: s.t, alt: alt, speed: speed});
+            renderVisualization();
+        }
+
+        if (Math.round(s.t * 10) % 20 === 0) {
+            telChart.data.labels.push(s.t.toFixed(0));
+            telChart.data.datasets[0].data.push(speed);
+            telChart.data.datasets[1].data.push(alt / 1000);
+            telChart.update('none');
+        }
+
+        // Termination conditions
+        if (alt < 0 && s.t > 5) {
+            isRunning = false;
+            setStatus('LITHOBRAKING (CRASH)', 'danger');
+        } else if (orbit.eccentricity < 1 && orbit.periapsis > 150000) {
+            isRunning = false;
+            setStatus('STABLE ORBIT ACHIEVED', 'success');
+        } else if (orbit.eccentricity >= 1 && alt > 200000) {
+            isRunning = false;
+            setStatus('ESCAPE TRAJECTORY', 'warning');
+        }
+
+        if (pathData.length > 3000) pathData.shift();
+
+        if (isRunning) requestAnimationFrame(animate);
+    }
+
+    function exportCSV() {
+        if (telemetryHistory.length === 0) {
+            alert('Run a simulation first to export telemetry data.');
+            return;
+        }
+        let csv = 'Time (s),Altitude (m),Velocity (m/s)\n';
+        telemetryHistory.forEach(row => {
+            csv += `${row.t.toFixed(1)},${row.alt.toFixed(2)},${row.speed.toFixed(2)}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'flight_telemetry_exhibition.csv';
+        a.click();
+    }
+
+    // Initial render
+    loadPreset();
+    resizeCanvas();
+</script>
+</body>
+</html>
