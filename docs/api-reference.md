@@ -407,7 +407,7 @@ The API supports Cross-Origin Resource Sharing for web frontend development. Rec
 - `Access-Control-Allow-Headers: Content-Type, Authorization`
 
 ### Integration with Web Frontend
-The `web/index.html` simulator already includes API integration for:
+The `docs/index.html` simulator already includes API integration for:
 - Loading rocket preset configurations
 - Real-time telemetry streaming
 - Simulation control (start/pause/stop)
@@ -419,7 +419,7 @@ For offline/deployed instances, ensure:
 1. Java 17+ runtime is available
 2. HTTP server serves the `/api/` endpoints
 3. CORS is configured for the web application origin
-4. Static assets (`web/index.html`, `web/`) are served from the same domain or via CDN
+4. Static assets (`docs/index.html`, `docs/`) are served from the same domain or via CDN
 
 ### Supported Languages
 - **Java** — Native backend implementation
